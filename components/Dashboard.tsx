@@ -12,12 +12,19 @@ interface DashboardProps {
 
 const formatMetric = (num: number, suffix: string = ''): string => {
   if (num >= 1000) {
+    // 1234 -> 1.2k (4 chars)
     return (num / 1000).toFixed(1) + 'k' + suffix;
   }
-  // Convert to string to check length
+  
+  // Handle integers that are small enough
+  if (Number.isInteger(num)) {
+      return num.toString() + suffix;
+  }
+
+  // Handle floats
   const str = num.toString();
   if (str.length > 4) {
-    return num.toPrecision(4) + suffix;
+    return num.toPrecision(3) + suffix; // Precision 3 usually gives 3 digits + decimal point = 4 chars approx
   }
   return num + suffix;
 };

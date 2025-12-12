@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  LayoutDashboard, Network, FileText, Settings, Bell, 
-  Menu, X, Command, Activity, Layers, GitBranch, Database, Globe, PlayCircle 
+  LayoutDashboard, Network, FileText, Settings, 
+  ChevronsLeft, ChevronsRight, CheckCircle2, CircleDashed, AlertCircle, Database, GitBranch, PlayCircle, Activity
 } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { ConsoleLogger } from './components/ConsoleLogger';
 import { LogicGraph } from './components/LogicGraph';
 import { AIOperator } from './components/AIOperator';
 import { NodeInspector } from './components/NodeInspector';
-import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails } from './types';
+import { Header } from './components/Header';
+import { LineageView } from './components/LineageView';
+import { SimulationView } from './components/SimulationView';
+import { DocumentsView } from './components/DocumentsView';
+import { ConfigurationView } from './components/ConfigurationView';
+import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, SystemModulesState, HandshakeState } from './types';
 
 // --- MOCK DATA GENERATORS ---
 
@@ -48,6 +53,14 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   
+  // Handshake State
+  const [modulesStatus, setModulesStatus] = useState<SystemModulesState>({
+      quantumCore: 'pending',
+      simulation: 'pending',
+      document: 'pending',
+      configuration: 'pending'
+  });
+
   const [metrics, setMetrics] = useState<SystemMetrics>({
     cpuLoad: 45,
     memoryUsage: 64.2,
@@ -71,6 +84,33 @@ const App: React.FC = () => {
       }
     ]);
   }, []);
+
+  // Initialization Handshake Sequence
+  useEffect(() => {
+    const runHandshake = async () => {
+        // Step 1: Quantum Core
+        setModulesStatus(prev => ({...prev, quantumCore: 'loading'}));
+        addLog('Initiating handshake with Quantum Core...', 'INFO', 'INIT');
+        await new Promise(r => setTimeout(r, 2500));
+        setModulesStatus(prev => ({...prev, quantumCore: 'success'}));
+        addLog('Quantum Core connection established.', 'SUCCESS', 'INIT');
+
+        // Step 2: Simulation Module
+        setModulesStatus(prev => ({...prev, simulation: 'loading'}));
+        addLog('Connecting to Digital Twin simulation engine...', 'INFO', 'INIT');
+        await new Promise(r => setTimeout(r, 2000));
+        setModulesStatus(prev => ({...prev, simulation: 'success'}));
+        addLog('Simulation module active.', 'SUCCESS', 'INIT');
+
+        // Step 3 & 4 Parallel: Doc & Config
+        setModulesStatus(prev => ({...prev, document: 'loading', configuration: 'loading'}));
+        await new Promise(r => setTimeout(r, 1500));
+        setModulesStatus(prev => ({...prev, document: 'success', configuration: 'success'}));
+        addLog('Document and Configuration stores synchronized.', 'SUCCESS', 'INIT');
+    };
+    
+    runHandshake();
+  }, [addLog]);
 
   const handleNodeSelect = (nodeId: string) => {
     setSelectedNodeId(nodeId);
@@ -127,8 +167,30 @@ const App: React.FC = () => {
   const selectedNode = INITIAL_NODES.find(n => n.id === selectedNodeId);
   const selectedNodeDetails = selectedNode ? (MOCK_NODE_DETAILS[selectedNode.id] || MOCK_NODE_DETAILS['default']) : null;
 
+  // Helper component for Module Loading State
+  const ModulePlaceholder = ({ label, status }: { label: string, status: HandshakeState }) => {
+      if (status === 'success') return null; // Should be replaced by parent logic
+      return (
+        <div className="flex items-center justify-center h-full flex-col text-slate-600 font-mono text-sm border border-quantum-600 border-dashed rounded-lg bg-quantum-900/30">
+            {status === 'failure' ? (
+                <>
+                   <AlertCircle className="w-12 h-12 mb-4 text-red-500 opacity-80" />
+                   <span className="text-red-400">MODULE INITIALIZATION FAILED</span>
+                   <button className="mt-4 px-3 py-1 bg-quantum-800 text-xs border border-quantum-600 rounded hover:text-slate-200">Retry Handshake</button>
+                </>
+            ) : (
+                <>
+                    <Database className="w-12 h-12 mb-4 opacity-50 animate-pulse" />
+                    <span>[ {label.toUpperCase()} MODULE INITIALIZING... ]</span>
+                    <span className="text-xs mt-2 text-slate-700">Waiting for Quantum Core handshake</span>
+                </>
+            )}
+        </div>
+      );
+  };
+
   return (
-    <div className="flex h-dvh w-full bg-quantum-950 text-slate-300 font-sans overflow-hidden relative">
+    <div className="flex h-screen w-full bg-quantum-950 text-slate-300 font-sans overflow-hidden relative">
       
       {/* Background ambient effects */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -137,11 +199,11 @@ const App: React.FC = () => {
       {/* Sidebar */}
       <aside 
         className={`
-          flex flex-col bg-quantum-900 border-r border-quantum-600 transition-all duration-300 z-20 shadow-xl
+          flex flex-col bg-quantum-900 border-r border-quantum-600 transition-all duration-300 z-30 shadow-xl
           ${sidebarOpen ? 'w-64' : 'w-16'}
         `}
       >
-        <div className="h-16 flex items-center px-4 border-b border-quantum-600 bg-quantum-900">
+        <div className="h-16 flex items-center px-4 border-b border-quantum-600 bg-quantum-900 shrink-0">
           <Activity className="w-6 h-6 text-cyan-400 shrink-0" />
           <span className={`ml-3 font-bold tracking-widest text-slate-100 transition-opacity duration-300 ${!sidebarOpen && 'opacity-0 hidden'}`}>
             LOGIC<span className="text-cyan-400">FLOW</span>
@@ -168,49 +230,36 @@ const App: React.FC = () => {
           </div>
         </nav>
 
-        {/* Improved Toggle Switch */}
-        <div className="p-3 bg-quantum-950 border-t border-quantum-600">
+        {/* Sidebar Toggle */}
+        <div className="p-4 border-t border-quantum-600 shrink-0 flex justify-center">
             <button 
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="w-full flex items-center justify-center p-2 rounded-md bg-quantum-800 hover:bg-quantum-700 text-slate-400 hover:text-cyan-400 transition-colors border border-quantum-700 hover:border-cyan-500/30 group"
+                className="w-8 h-8 flex items-center justify-center rounded bg-quantum-800 hover:bg-quantum-700 text-slate-400 hover:text-cyan-400 border border-quantum-700 hover:border-cyan-500/30 transition-all shadow-sm"
+                title="Toggle Sidebar"
             >
-                {sidebarOpen ? (
-                    <div className="flex items-center space-x-2">
-                        <span className="text-xs font-mono uppercase tracking-wide">Collapse</span>
-                        <div className="w-1 h-4 border-r border-slate-600"></div>
-                        <X className="w-3 h-3 group-hover:rotate-90 transition-transform" />
-                    </div>
-                ) : (
-                    <Menu className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                )}
+                {sidebarOpen ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
             </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full">
         
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between px-6 bg-quantum-900/90 backdrop-blur-md border-b border-quantum-600 z-20 shrink-0">
-            <div className="flex items-center space-x-4">
-                <span className="text-xs font-mono text-slate-500 hidden md:inline-block">SYSTEM_ID: <span className="text-slate-300">Q-OS-742</span></span>
-                <span className="h-4 w-px bg-quantum-600 hidden md:inline-block"></span>
-                <div className="flex items-center space-x-2 px-2 py-1 bg-quantum-800/50 rounded border border-quantum-700">
-                    <div className="w-1.5 h-1.5 rounded-full bg-quantum-success animate-pulse"></div>
-                    <span className="text-xs font-mono text-slate-300">SYSTEM NOMINAL</span>
+        {/* Initialization Banner */}
+        {Object.values(modulesStatus).some(s => s !== 'success') && (
+            <div className="h-8 bg-quantum-900 border-b border-quantum-600 flex items-center justify-between px-4 shrink-0">
+                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider animate-pulse">Lineage Module Initializing...</span>
+                <div className="flex space-x-4">
+                    <StatusStep label="Quantum Core" status={modulesStatus.quantumCore} />
+                    <StatusStep label="Simulation" status={modulesStatus.simulation} />
+                    <StatusStep label="Document" status={modulesStatus.document} />
+                    <StatusStep label="Configuration" status={modulesStatus.configuration} />
                 </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-                <button className="p-2 text-slate-400 hover:text-cyan-400 transition-colors relative">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-quantum-900"></span>
-                </button>
-                <div className="w-8 h-8 rounded bg-gradient-to-tr from-cyan-600 to-purple-700 flex items-center justify-center font-bold text-white text-xs shadow-glow-cyan cursor-pointer hover:ring-2 ring-cyan-500/50 transition-all">
-                    OP
-                </div>
-            </div>
-        </header>
+        )}
+
+        {/* New Header */}
+        <Header />
 
         {/* Dynamic Viewport */}
         <div className="flex-1 flex overflow-hidden p-4 gap-4">
@@ -247,24 +296,42 @@ const App: React.FC = () => {
                     </div>
                 )}
                 
-                {(activeTab === 'lineage' || activeTab === 'sim' || activeTab === 'docs' || activeTab === 'settings') && (
-                    <div className="flex items-center justify-center h-full flex-col text-slate-600 font-mono text-sm border border-quantum-600 border-dashed rounded-lg bg-quantum-900/30">
-                        <Database className="w-12 h-12 mb-4 opacity-50" />
-                        <span>[ {activeTab.toUpperCase()} MODULE INITIALIZING... ]</span>
-                        <span className="text-xs mt-2 text-slate-700">Waiting for Quantum Core handshake</span>
-                    </div>
+                {activeTab === 'lineage' && (
+                    modulesStatus.document === 'success' && modulesStatus.quantumCore === 'success' 
+                    ? <LineageView /> 
+                    : <ModulePlaceholder label="Lineage" status={modulesStatus.document === 'loading' || modulesStatus.quantumCore === 'loading' ? 'loading' : 'pending'} />
                 )}
+
+                {activeTab === 'sim' && (
+                    modulesStatus.simulation === 'success' 
+                    ? <SimulationView /> 
+                    : <ModulePlaceholder label="Simulation" status={modulesStatus.simulation} />
+                )}
+
+                {activeTab === 'docs' && (
+                    modulesStatus.document === 'success' 
+                    ? <DocumentsView /> 
+                    : <ModulePlaceholder label="Documents" status={modulesStatus.document} />
+                )}
+
+                {activeTab === 'settings' && (
+                    modulesStatus.configuration === 'success' 
+                    ? <ConfigurationView /> 
+                    : <ModulePlaceholder label="Configuration" status={modulesStatus.configuration} />
+                )}
+
             </div>
 
             {/* Right Control Column */}
-            <div className="w-80 flex flex-col space-y-4 shrink-0 transition-all duration-500">
+            <div className="w-80 flex flex-col space-y-4 shrink-0">
                 
-                {/* Context-Aware Top Panel */}
-                <div className={`${selectedNodeId ? 'h-[60%]' : 'h-[50%]'} transition-all duration-500`}>
+                {/* Context-Aware Top Panel - uses fixed heights to avoid layout thrashing */}
+                <div className="h-[300px] shrink-0 transition-all duration-300 ease-in-out">
                     {selectedNodeId && selectedNode && selectedNodeDetails ? (
                         <NodeInspector 
                             node={selectedNode} 
-                            details={selectedNodeDetails} 
+                            details={selectedNodeDetails}
+                            modulesStatus={modulesStatus}
                             onClose={() => setSelectedNodeId(null)}
                             onAction={handleInspectorAction}
                         />
@@ -273,14 +340,9 @@ const App: React.FC = () => {
                     )}
                 </div>
 
-                {/* Bottom Panel (Logs or collapsed AI) */}
-                <div className={`${selectedNodeId ? 'h-[40%]' : 'h-[50%]'} transition-all duration-500`}>
-                    {selectedNodeId ? (
-                         // If Node Inspector is active, we can show a compacted AI or Logs. Let's show Logs.
-                         <ConsoleLogger logs={logs} />
-                    ) : (
-                         <ConsoleLogger logs={logs} />
-                    )}
+                {/* Bottom Panel (Logs) */}
+                <div className="flex-1 min-h-0">
+                    <ConsoleLogger logs={logs} />
                 </div>
 
             </div>
@@ -293,11 +355,20 @@ const App: React.FC = () => {
   );
 };
 
+const StatusStep = ({ label, status }: { label: string, status: HandshakeState }) => (
+    <div className="flex items-center space-x-1.5 opacity-80">
+        {status === 'success' ? <CheckCircle2 className="w-3 h-3 text-quantum-success" /> : 
+         status === 'loading' ? <CircleDashed className="w-3 h-3 text-cyan-400 animate-spin" /> :
+         <div className="w-3 h-3 rounded-full border border-slate-600"></div>}
+        <span className={`text-[10px] font-mono ${status === 'success' ? 'text-slate-300' : 'text-slate-500'}`}>{label}</span>
+    </div>
+);
+
 const SidebarItem: React.FC<{ 
   icon: React.ReactNode; 
   label: string; 
   active: boolean; 
-  collapsed: boolean;
+  collapsed: boolean; 
   onClick: () => void;
 }> = ({ icon, label, active, collapsed, onClick }) => (
   <button
