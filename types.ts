@@ -13,6 +13,15 @@ export enum ModuleType {
   AI_CORE = 'AI_PROCESSING'
 }
 
+export type HandshakeState = 'pending' | 'loading' | 'success' | 'failure';
+
+export interface SystemModulesState {
+  quantumCore: HandshakeState;
+  simulation: HandshakeState;
+  document: HandshakeState;
+  configuration: HandshakeState;
+}
+
 export interface LogEntry {
   id: string;
   timestamp: string;
