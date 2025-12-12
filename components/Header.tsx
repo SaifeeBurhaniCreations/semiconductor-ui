@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bell, User, Settings, LogOut, HelpCircle, CreditCard, Users, 
-  Shield, CheckCircle2, AlertTriangle, Info, X, Search
+  Shield, CheckCircle2, AlertTriangle, Info, Eye
 } from 'lucide-react';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+    onToggleContrast?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -111,6 +115,7 @@ export const Header: React.FC = () => {
                         </div>
                         <div className="py-2">
                             <MenuItem icon={<Users className="w-4 h-4" />} label="Switch Team" />
+                            <MenuItem icon={<Eye className="w-4 h-4" />} label="Toggle High Contrast" onClick={onToggleContrast} />
                             <MenuItem icon={<User className="w-4 h-4" />} label="My Profile" />
                             <MenuItem icon={<Shield className="w-4 h-4" />} label="Security & Keys" />
                             <MenuItem icon={<CreditCard className="w-4 h-4" />} label="Billing" />
@@ -131,8 +136,8 @@ export const Header: React.FC = () => {
   );
 };
 
-const MenuItem = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
-    <button className="flex items-center w-full px-4 py-2 text-sm text-slate-300 hover:bg-quantum-800 hover:text-cyan-400 transition-colors">
+const MenuItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
+    <button onClick={onClick} className="flex items-center w-full px-4 py-2 text-sm text-slate-300 hover:bg-quantum-800 hover:text-cyan-400 transition-colors">
         <span className="mr-3 text-slate-500">{icon}</span>
         {label}
     </button>
