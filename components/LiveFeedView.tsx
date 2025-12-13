@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Grid, LayoutTemplate, Activity, AlertTriangle, Wifi, WifiOff, 
     Play, Pause, FastForward, Rewind, Camera, Aperture, 
     Maximize2, FileText, Settings, RefreshCw, ChevronLeft, 
     Search, Filter, Calendar, Clock, Download, Layers, Eye,
-    CheckCircle2, XCircle, Cpu, Network
+    CheckCircle2, XCircle, Cpu, Network, RotateCcw, Loader2, X
 } from 'lucide-react';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
@@ -38,18 +38,56 @@ export const LiveFeedView: React.FC = () => {
     const [view, setView] = useState<'dashboard' | 'live' | 'playback' | 'detail'>('dashboard');
     const [selectedCamId, setSelectedCamId] = useState<string | null>(null);
     
+    // Header UI State
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'warning' | 'offline'>('all');
+
+    // Camera Control Actions State
+    const [cameraAction, setCameraAction] = useState<{ type: string, message: string } | null>(null);
+
     const selectedCam = CAMERAS.find(c => c.id === selectedCamId) || CAMERAS[0];
+
+    // Filter Logic
+    const filteredCameras = CAMERAS.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFilter = statusFilter === 'all' || c.status === statusFilter;
+        return matchesSearch && matchesFilter;
+    });
 
     const navigateTo = (v: typeof view, camId?: string) => {
         if (camId) setSelectedCamId(camId);
         setView(v);
     };
 
+    // Control Handlers
+    const handleRestart = () => {
+        setCameraAction({ type: 'restart', message: 'REBOOTING SYSTEM...' });
+        setTimeout(() => setCameraAction(null), 3000);
+    };
+
+    const handleCalibrate = () => {
+        setCameraAction({ type: 'calibrate', message: 'CALIBRATING SENSORS...' });
+        setTimeout(() => setCameraAction(null), 2500);
+    };
+
+    const handleResetNet = () => {
+        setCameraAction({ type: 'network', message: 'NETWORK RESET INITIATED...' });
+        setTimeout(() => setCameraAction({ type: 'network', message: 'RECONNECTING...' }), 1500);
+        setTimeout(() => setCameraAction(null), 3000);
+    };
+
+    const handleFocus = () => {
+        setCameraAction({ type: 'focus', message: 'AUTO-FOCUSING...' });
+        setTimeout(() => setCameraAction(null), 2000);
+    };
+
     return (
         <div className="flex flex-col h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden relative">
             
             {/* Top Navigation Bar */}
-            <div className="h-14 border-b border-quantum-600 bg-quantum-800 flex items-center justify-between px-4 shrink-0">
+            <div className="h-14 border-b border-quantum-600 bg-quantum-800 flex items-center justify-between px-4 shrink-0 relative z-20">
                 <div className="flex items-center space-x-4">
                     {view !== 'dashboard' && (
                         <button onClick={() => setView('dashboard')} className="p-1.5 rounded hover:bg-quantum-700 text-slate-400 hover:text-slate-200 transition-colors">
@@ -80,8 +118,50 @@ export const LiveFeedView: React.FC = () => {
                 )}
 
                 <div className="flex items-center space-x-2">
-                    <button className="p-2 hover:bg-quantum-700 rounded text-slate-400"><Search className="w-4 h-4" /></button>
-                    <button className="p-2 hover:bg-quantum-700 rounded text-slate-400"><Filter className="w-4 h-4" /></button>
+                    {/* Interactive Search */}
+                    {searchOpen ? (
+                        <div className="flex items-center bg-quantum-950 border border-quantum-700 rounded-md px-2 py-1 animate-in fade-in slide-in-from-right-2 duration-200">
+                            <Search className="w-3 h-3 text-slate-500 mr-2" />
+                            <input 
+                                autoFocus
+                                type="text" 
+                                placeholder="Search ID/Name..."
+                                className="bg-transparent border-none text-xs text-slate-200 focus:outline-none w-32"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onBlur={() => !searchQuery && setSearchOpen(false)}
+                            />
+                            <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="ml-1 text-slate-500 hover:text-white"><X className="w-3 h-3" /></button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setSearchOpen(true)} className="p-2 hover:bg-quantum-700 rounded text-slate-400 hover:text-cyan-400 transition-colors">
+                            <Search className="w-4 h-4" />
+                        </button>
+                    )}
+
+                    {/* Interactive Filter */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => setFilterOpen(!filterOpen)} 
+                            className={`p-2 rounded transition-colors ${filterOpen ? 'bg-quantum-700 text-cyan-400' : 'hover:bg-quantum-700 text-slate-400 hover:text-cyan-400'}`}
+                        >
+                            <Filter className="w-4 h-4" />
+                        </button>
+                        {filterOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-32 bg-quantum-900 border border-quantum-600 rounded shadow-xl z-50 py-1">
+                                {['all', 'online', 'warning', 'offline'].map(status => (
+                                    <button 
+                                        key={status}
+                                        onClick={() => { setStatusFilter(status as any); setFilterOpen(false); }}
+                                        className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-quantum-800 uppercase flex justify-between items-center"
+                                    >
+                                        {status}
+                                        {statusFilter === status && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -92,7 +172,7 @@ export const LiveFeedView: React.FC = () => {
                 {view === 'dashboard' && (
                     <div className="p-6 h-full overflow-y-auto custom-scrollbar">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {CAMERAS.map(cam => (
+                            {filteredCameras.map(cam => (
                                 <div key={cam.id} className="bg-quantum-900 border border-quantum-700 rounded-lg overflow-hidden group hover:border-cyan-500/50 transition-all shadow-lg flex flex-col">
                                     {/* Thumbnail Preview */}
                                     <div className={`h-40 w-full relative ${cam.thumbnail} flex items-center justify-center`}>
@@ -171,10 +251,10 @@ export const LiveFeedView: React.FC = () => {
                             <div className="pt-4 border-t border-quantum-700">
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Camera Controls</h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <ControlBtn icon={<RefreshCw />} label="Restart" />
-                                    <ControlBtn icon={<Aperture />} label="Calibrate" />
-                                    <ControlBtn icon={<WifiOff />} label="Reset Net" />
-                                    <ControlBtn icon={<Maximize2 />} label="Focus" />
+                                    <ControlBtn icon={<RefreshCw />} label="Restart" onClick={handleRestart} loading={cameraAction?.type === 'restart'} />
+                                    <ControlBtn icon={<Aperture />} label="Calibrate" onClick={handleCalibrate} loading={cameraAction?.type === 'calibrate'} />
+                                    <ControlBtn icon={<WifiOff />} label="Reset Net" onClick={handleResetNet} loading={cameraAction?.type === 'network'} />
+                                    <ControlBtn icon={<Maximize2 />} label="Focus" onClick={handleFocus} loading={cameraAction?.type === 'focus'} />
                                 </div>
                             </div>
                         </div>
@@ -186,16 +266,46 @@ export const LiveFeedView: React.FC = () => {
                             
                             {/* Simulated Content */}
                             <div className="relative w-full h-full max-w-4xl max-h-[80%] border border-slate-800 bg-slate-900/20 flex items-center justify-center overflow-hidden shadow-2xl">
-                                <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(34, 211, 238, .05) 25%, rgba(34, 211, 238, .05) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, .05) 75%, rgba(34, 211, 238, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(34, 211, 238, .05) 25%, rgba(34, 211, 238, .05) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, .05) 75%, rgba(34, 211, 238, .05) 76%, transparent 77%, transparent)', backgroundSize: '50px 50px' }}></div>
-                                <div className="text-slate-700 font-mono text-6xl font-bold opacity-30 select-none animate-pulse">{selectedCam.name}</div>
                                 
-                                {/* AI Overlays (Mock) */}
-                                <div className="absolute top-[20%] left-[30%] w-32 h-32 border-2 border-dashed border-red-500/60 rounded flex items-start justify-end p-1">
-                                    <span className="bg-red-500 text-white text-[10px] font-bold px-1 rounded">Defect 98%</span>
+                                {/* Base Grid Pattern */}
+                                <div className={`absolute inset-0 transition-opacity duration-500 ${cameraAction?.type === 'focus' ? 'opacity-20 blur-sm' : 'opacity-100'}`} style={{ backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(34, 211, 238, .05) 25%, rgba(34, 211, 238, .05) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, .05) 75%, rgba(34, 211, 238, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(34, 211, 238, .05) 25%, rgba(34, 211, 238, .05) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, .05) 75%, rgba(34, 211, 238, .05) 76%, transparent 77%, transparent)', backgroundSize: '50px 50px' }}></div>
+                                
+                                {/* Calibration Grid Overlay */}
+                                {cameraAction?.type === 'calibrate' && (
+                                    <div className="absolute inset-0 z-10 grid grid-cols-4 grid-rows-4 animate-pulse">
+                                        {[...Array(16)].map((_, i) => (
+                                            <div key={i} className="border border-cyan-500/30"></div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Content Label */}
+                                <div className={`text-slate-700 font-mono text-6xl font-bold opacity-30 select-none animate-pulse transition-all ${cameraAction?.type === 'focus' ? 'blur-md' : 'blur-0'}`}>
+                                    {selectedCam.name}
                                 </div>
-                                <div className="absolute bottom-[30%] right-[20%] w-24 h-48 border-2 border-cyan-500/40 rounded flex items-start justify-start p-1">
-                                    <span className="bg-cyan-500 text-black text-[10px] font-bold px-1 rounded">Object</span>
-                                </div>
+                                
+                                {/* Full Screen Action Overlay */}
+                                {cameraAction && (
+                                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                                        <div className="flex flex-col items-center">
+                                            {cameraAction.type === 'network' ? <WifiOff className="w-12 h-12 text-red-500 animate-pulse mb-4" /> : 
+                                             <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mb-4" />}
+                                            <span className="text-xl font-bold text-slate-200 tracking-widest uppercase">{cameraAction.message}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* AI Overlays (Mock) - Hide if action is active */}
+                                {!cameraAction && (
+                                    <>
+                                        <div className="absolute top-[20%] left-[30%] w-32 h-32 border-2 border-dashed border-red-500/60 rounded flex items-start justify-end p-1">
+                                            <span className="bg-red-500 text-white text-[10px] font-bold px-1 rounded">Defect 98%</span>
+                                        </div>
+                                        <div className="absolute bottom-[30%] right-[20%] w-24 h-48 border-2 border-cyan-500/40 rounded flex items-start justify-start p-1">
+                                            <span className="bg-cyan-500 text-black text-[10px] font-bold px-1 rounded">Object</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             {/* Overlay Controls */}
@@ -372,7 +482,7 @@ export const LiveFeedView: React.FC = () => {
 // --- Sub-components ---
 
 const MetricPill = ({ label, value, color }: any) => (
-    <div className="bg-quantum-950 border border-quantum-800 rounded px-2 py-1 flex justify-between items-center">
+    <div className="bg-quantum-900 border border-quantum-800 rounded px-2 py-1 flex justify-between items-center">
         <span className="text-[10px] text-slate-500 uppercase">{label}</span>
         <span className={`text-xs font-mono font-bold ${color}`}>{value}</span>
     </div>
@@ -407,9 +517,17 @@ const StreamMetric = ({ label, value, trend, icon }: any) => (
     </div>
 );
 
-const ControlBtn = ({ icon, label }: any) => (
-    <button className="flex flex-col items-center justify-center p-2 bg-quantum-950 border border-quantum-800 rounded hover:border-cyan-500/30 hover:text-cyan-400 transition-colors">
-        <div className="mb-1">{icon}</div>
+const ControlBtn = ({ icon, label, onClick, loading }: any) => (
+    <button 
+        onClick={onClick}
+        disabled={loading}
+        className={`flex flex-col items-center justify-center p-2 border rounded transition-colors ${
+            loading 
+            ? 'bg-quantum-900 border-cyan-500/50 text-cyan-400 animate-pulse' 
+            : 'bg-quantum-950 border-quantum-800 hover:border-cyan-500/30 hover:text-cyan-400 text-slate-400'
+        }`}
+    >
+        <div className="mb-1">{loading ? <RotateCcw className="w-4 h-4 animate-spin" /> : icon}</div>
         <span className="text-[9px] uppercase font-bold">{label}</span>
     </button>
 );

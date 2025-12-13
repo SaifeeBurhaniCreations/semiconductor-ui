@@ -71,6 +71,7 @@ const App: React.FC = () => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [criticalErrorOpen, setCriticalErrorOpen] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
+  const [autoArrangeTrigger, setAutoArrangeTrigger] = useState(0); // State for auto-arrange
   
   // Handshake State
   const [modulesStatus, setModulesStatus] = useState<SystemModulesState>({
@@ -190,6 +191,11 @@ const App: React.FC = () => {
           document.documentElement.style.filter = "";
           addLog('High Contrast Mode DISABLED', 'INFO', 'UI');
       }
+  };
+
+  const handleAutoArrange = () => {
+      setAutoArrangeTrigger(prev => prev + 1);
+      addLog('Auto-arrange sequence initiated.', 'INFO', 'UI');
   };
 
   // Simulate System Activity
@@ -332,7 +338,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full overflow-hidden">
         
         {/* Initialization Banner */}
         {Object.values(modulesStatus).some(s => s !== 'success') && (
@@ -374,7 +380,10 @@ const App: React.FC = () => {
                                     {builderMode ? <Hammer className="w-3 h-3 mr-2" /> : <Monitor className="w-3 h-3 mr-2" />}
                                     {builderMode ? 'BUILDER MODE' : 'VIEWER MODE'}
                                 </button>
-                                <button className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors">
+                                <button 
+                                    onClick={handleAutoArrange}
+                                    className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors"
+                                >
                                     AUTO-ARRANGE
                                 </button>
                              </div>
@@ -387,6 +396,7 @@ const App: React.FC = () => {
                                     onNodeSelect={handleNodeSelect}
                                     selectedNodeId={selectedNodeId}
                                     builderMode={builderMode}
+                                    layoutTrigger={autoArrangeTrigger}
                                 />
                             </div>
                         </div>

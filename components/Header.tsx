@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
   ];
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 bg-quantum-900/90 backdrop-blur-md border-b border-quantum-600 z-40 shrink-0 relative">
+    <header className="h-16 flex items-center justify-between px-6 bg-quantum-900/90 backdrop-blur-md border-b border-quantum-600 z-40 shrink-0 sticky top-0">
         <div className="flex items-center space-x-4">
             <span className="text-xs font-mono text-slate-500 hidden md:inline-block">SYSTEM_ID: <span className="text-slate-300">Q-OS-742</span></span>
             <span className="h-4 w-px bg-quantum-600 hidden md:inline-block"></span>
