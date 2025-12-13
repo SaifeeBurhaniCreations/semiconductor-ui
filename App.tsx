@@ -1,19 +1,66 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  LayoutDashboard, Network, FileText, Settings, 
-  ChevronsLeft, ChevronsRight, CheckCircle2, CircleDashed, AlertCircle, Database, GitBranch, PlayCircle, Activity
-} from 'lucide-react';
-import { Dashboard } from './components/Dashboard';
-import { ConsoleLogger } from './components/ConsoleLogger';
-import { LogicGraph } from './components/LogicGraph';
-import { AIOperator } from './components/AIOperator';
-import { NodeInspector } from './components/NodeInspector';
-import { Header } from './components/Header';
-import { LineageView } from './components/LineageView';
-import { SimulationView } from './components/SimulationView';
-import { DocumentsView } from './components/DocumentsView';
-import { ConfigurationView } from './components/ConfigurationView';
-import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, SystemModulesState, HandshakeState } from './types';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  LayoutDashboard,
+  Network,
+  FileText,
+  Settings,
+  ChevronsLeft,
+  ChevronsRight,
+  CheckCircle2,
+  CircleDashed,
+  AlertCircle,
+  Database,
+  GitBranch,
+  PlayCircle,
+  Activity,
+  Hammer,
+  Monitor,
+  BarChart2,
+  Server,
+  Shield,
+  CreditCard,
+  HelpCircle,
+  HardDrive,
+  Factory,
+  Link2,
+  BrainCircuit,
+  Eye,
+} from "lucide-react";
+import { Dashboard } from "./components/Dashboard";
+import { ConsoleLogger } from "./components/ConsoleLogger";
+import { LogicGraph } from "./components/LogicGraph";
+import { AIOperator } from "./components/AIOperator";
+import { NodeInspector } from "./components/NodeInspector";
+import { Header } from "./components/Header";
+import { LineageView } from "./components/LineageView";
+import { SimulationView } from "./components/SimulationView";
+import { DocumentsView } from "./components/DocumentsView";
+import { ConfigurationView } from "./components/ConfigurationView";
+import { AnalyticsView } from "./components/AnalyticsView";
+import { ResourceView } from "./components/ResourceView";
+import { SecurityView } from "./components/SecurityView";
+import { BillingView } from "./components/BillingView";
+import { SupportView } from "./components/SupportView";
+import { AdminView } from "./components/AdminView";
+import { ShortcutsModal } from "./components/ShortcutsModal";
+import { CriticalErrorModal } from "./components/CriticalErrorModal";
+import { BuilderPalette } from "./components/BuilderPalette";
+import { JobQueue } from "./components/JobQueue";
+import { ManufacturingView } from "./components/ManufacturingView";
+import { IntegrationsView } from "./components/IntegrationsView";
+import { AIOversightView } from "./components/AIOversightView";
+import { LiveFeedView } from "./components/LiveFeedView";
+import {
+  LogEntry,
+  LogicNode,
+  SystemMetrics,
+  ModuleType,
+  NodeDetails,
+  SystemModulesState,
+  HandshakeState,
+} from "./types";
+
+import "./global.css";
 
 // --- MOCK DATA GENERATORS ---
 
@@ -128,17 +175,36 @@ const generateMockHistory = () => {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "logic" | "lineage" | "sim" | "docs" | "settings"
+    | "dashboard"
+    | "logic"
+    | "lineage"
+    | "sim"
+    | "analytics"
+    | "manufacturing"
+    | "vision"
+    | "integrations"
+    | "docs"
+    | "settings"
+    | "resources"
+    | "security"
+    | "billing"
+    | "support"
+    | "admin"
+    | "oversight"
   >("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  
+  const [builderMode, setBuilderMode] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [criticalErrorOpen, setCriticalErrorOpen] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+
   // Handshake State
   const [modulesStatus, setModulesStatus] = useState<SystemModulesState>({
-      quantumCore: 'pending',
-      simulation: 'pending',
-      document: 'pending',
-      configuration: 'pending'
+    quantumCore: "pending",
+    simulation: "pending",
+    document: "pending",
+    configuration: "pending",
   });
 
   const [metrics, setMetrics] = useState<SystemMetrics>({
@@ -152,43 +218,102 @@ const App: React.FC = () => {
   const [history, setHistory] = useState(generateMockHistory());
 
   // Helper to add logs
-  const addLog = useCallback((message: string, level: LogEntry['level'] = 'INFO', source: string = 'SYS') => {
-    setLogs(prev => [
-      ...prev.slice(-99), // Keep last 100
-      {
-        id: Math.random().toString(36).substring(7),
-        timestamp: new Date().toLocaleTimeString([], { hour12: false }),
-        level,
-        source,
-        message
+  const addLog = useCallback(
+    (
+      message: string,
+      level: LogEntry["level"] = "INFO",
+      source: string = "SYS"
+    ) => {
+      setLogs((prev) => [
+        ...prev.slice(-99), // Keep last 100
+        {
+          id: Math.random().toString(36).substring(7),
+          timestamp: new Date().toLocaleTimeString([], { hour12: false }),
+          level,
+          source,
+          message,
+        },
+      ]);
+    },
+    []
+  );
+
+  // Keyboard Shortcuts Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle Shortcuts Modal
+      if (e.key === "?") {
+        setShortcutsOpen((prev) => !prev);
       }
-    ]);
-  }, []);
+      // Critical Error Test (Shift + !)
+      if (e.key === "!" && e.shiftKey) {
+        setCriticalErrorOpen(true);
+      }
+      // Navigation Shortcuts (Shift + Key)
+      if (e.shiftKey) {
+        switch (e.key.toLowerCase()) {
+          case "d":
+            setActiveTab("dashboard");
+            break;
+          case "l":
+            setActiveTab("logic");
+            break;
+          case "s":
+            setActiveTab("sim");
+            break;
+          case "a":
+            setActiveTab("analytics");
+            break;
+        }
+      }
+      // Escape to close things
+      if (e.key === "Escape") {
+        if (selectedNodeId) handleCloseNodeInspector();
+        setShortcutsOpen(false);
+        setCriticalErrorOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedNodeId]);
 
   // Initialization Handshake Sequence
   useEffect(() => {
     const runHandshake = async () => {
-        // Step 1: Quantum Core
-        setModulesStatus(prev => ({...prev, quantumCore: 'loading'}));
-        addLog('Initiating handshake with Quantum Core...', 'INFO', 'INIT');
-        await new Promise(r => setTimeout(r, 2500));
-        setModulesStatus(prev => ({...prev, quantumCore: 'success'}));
-        addLog('Quantum Core connection established.', 'SUCCESS', 'INIT');
+      // Step 1: Quantum Core
+      setModulesStatus((prev) => ({ ...prev, quantumCore: "loading" }));
+      addLog("Initiating handshake with Quantum Core...", "INFO", "INIT");
+      await new Promise((r) => setTimeout(r, 2500));
+      setModulesStatus((prev) => ({ ...prev, quantumCore: "success" }));
+      addLog("Quantum Core connection established.", "SUCCESS", "INIT");
 
-        // Step 2: Simulation Module
-        setModulesStatus(prev => ({...prev, simulation: 'loading'}));
-        addLog('Connecting to Digital Twin simulation engine...', 'INFO', 'INIT');
-        await new Promise(r => setTimeout(r, 2000));
-        setModulesStatus(prev => ({...prev, simulation: 'success'}));
-        addLog('Simulation module active.', 'SUCCESS', 'INIT');
+      // Step 2: Simulation Module
+      setModulesStatus((prev) => ({ ...prev, simulation: "loading" }));
+      addLog("Connecting to Digital Twin simulation engine...", "INFO", "INIT");
+      await new Promise((r) => setTimeout(r, 2000));
+      setModulesStatus((prev) => ({ ...prev, simulation: "success" }));
+      addLog("Simulation module active.", "SUCCESS", "INIT");
 
-        // Step 3 & 4 Parallel: Doc & Config
-        setModulesStatus(prev => ({...prev, document: 'loading', configuration: 'loading'}));
-        await new Promise(r => setTimeout(r, 1500));
-        setModulesStatus(prev => ({...prev, document: 'success', configuration: 'success'}));
-        addLog('Document and Configuration stores synchronized.', 'SUCCESS', 'INIT');
+      // Step 3 & 4 Parallel: Doc & Config
+      setModulesStatus((prev) => ({
+        ...prev,
+        document: "loading",
+        configuration: "loading",
+      }));
+      await new Promise((r) => setTimeout(r, 1500));
+      setModulesStatus((prev) => ({
+        ...prev,
+        document: "success",
+        configuration: "success",
+      }));
+      addLog(
+        "Document and Configuration stores synchronized.",
+        "SUCCESS",
+        "INIT"
+      );
     };
-    
+
     runHandshake();
   }, [addLog]);
 
@@ -197,12 +322,32 @@ const App: React.FC = () => {
     addLog(`Operator selected node ID: ${nodeId}`, "INFO", "UI");
   };
 
+  const handleCloseNodeInspector = () => {
+    setSelectedNodeId(null);
+    // Req 16: UI Recovery Microcopy
+    addLog("Node view closed — topology reset in safe mode.", "INFO", "UI");
+    addLog("Restoring viewport alignment...", "INFO", "SYS");
+  };
+
   const handleInspectorAction = (action: string) => {
     addLog(
       `Initiating ${action.toUpperCase()} on Node ${selectedNodeId}...`,
       "AI",
       "OPS"
     );
+  };
+
+  const toggleHighContrast = () => {
+    setHighContrast(!highContrast);
+    if (!highContrast) {
+      document.documentElement.classList.add("contrast-more");
+      document.documentElement.style.filter = "contrast(1.5) saturate(0.8)";
+      addLog("High Contrast Mode ENABLED", "INFO", "UI");
+    } else {
+      document.documentElement.classList.remove("contrast-more");
+      document.documentElement.style.filter = "";
+      addLog("High Contrast Mode DISABLED", "INFO", "UI");
+    }
   };
 
   // Simulate System Activity
@@ -265,43 +410,69 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [addLog]);
 
-  const selectedNode = INITIAL_NODES.find(n => n.id === selectedNodeId);
-  const selectedNodeDetails = selectedNode ? (MOCK_NODE_DETAILS[selectedNode.id] || MOCK_NODE_DETAILS['default']) : null;
+  const selectedNode = INITIAL_NODES.find((n) => n.id === selectedNodeId);
+  const selectedNodeDetails = selectedNode
+    ? MOCK_NODE_DETAILS[selectedNode.id] || MOCK_NODE_DETAILS["default"]
+    : null;
 
   // Helper component for Module Loading State
-  const ModulePlaceholder = ({ label, status }: { label: string, status: HandshakeState }) => {
-      if (status === 'success') return null; // Should be replaced by parent logic
-      return (
-        <div className="flex items-center justify-center h-full flex-col text-slate-600 font-mono text-sm border border-quantum-600 border-dashed rounded-lg bg-quantum-900/30">
-            {status === 'failure' ? (
-                <>
-                   <AlertCircle className="w-12 h-12 mb-4 text-red-500 opacity-80" />
-                   <span className="text-red-400">MODULE INITIALIZATION FAILED</span>
-                   <button className="mt-4 px-3 py-1 bg-quantum-800 text-xs border border-quantum-600 rounded hover:text-slate-200">Retry Handshake</button>
-                </>
-            ) : (
-                <>
-                    <Database className="w-12 h-12 mb-4 opacity-50 animate-pulse" />
-                    <span>[ {label.toUpperCase()} MODULE INITIALIZING... ]</span>
-                    <span className="text-xs mt-2 text-slate-700">Waiting for Quantum Core handshake</span>
-                </>
-            )}
-        </div>
-      );
+  const ModulePlaceholder = ({
+    label,
+    status,
+  }: {
+    label: string;
+    status: HandshakeState;
+  }) => {
+    if (status === "success") return null; // Should be replaced by parent logic
+    return (
+      <div className="flex items-center justify-center h-full flex-col text-slate-600 font-mono text-sm border border-quantum-600 border-dashed rounded-lg bg-quantum-900/30">
+        {status === "failure" ? (
+          <>
+            <AlertCircle className="w-12 h-12 mb-4 text-red-500 opacity-80" />
+            <span className="text-red-400">MODULE INITIALIZATION FAILED</span>
+            <button className="mt-4 px-3 py-1 bg-quantum-800 text-xs border border-quantum-600 rounded hover:text-slate-200">
+              Retry Handshake
+            </button>
+          </>
+        ) : (
+          <>
+            <Database className="w-12 h-12 mb-4 opacity-50 animate-pulse" />
+            <span>[ {label.toUpperCase()} MODULE INITIALIZING... ]</span>
+            <span className="text-xs mt-2 text-slate-700">
+              Waiting for Quantum Core handshake
+            </span>
+          </>
+        )}
+      </div>
+    );
   };
 
+  console.log("document.body.scrollHeight > window.innerHeight", document.body.scrollHeight > window.innerHeight);
+
+  
   return (
-    <div className="flex h-screen w-full bg-quantum-950 text-slate-300 font-sans overflow-hidden relative">
-      
+    <div className="flex h-screen w-full bg-quantum-950 text-slate-300 font-sans relative">
       {/* Background ambient effects */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[100px] pointer-events-none"></div>
+     <div className="fixed inset-0 pointer-events-none z-0">
+  <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px]" />
+  <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[100px]" />
+</div>
+
+      {/* Global Modals */}
+      <ShortcutsModal
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
+      <CriticalErrorModal
+        isOpen={criticalErrorOpen}
+        onClose={() => setCriticalErrorOpen(false)}
+      />
 
       {/* Sidebar */}
       <aside
         className={`
           flex flex-col bg-quantum-900 border-r border-quantum-600 transition-all duration-300 z-30 shadow-xl
-          ${sidebarOpen ? 'w-64' : 'w-16'}
+          ${sidebarOpen ? "w-64" : "w-16"}
         `}
       >
         <div className="h-16 flex items-center px-4 border-b border-quantum-600 bg-quantum-900 shrink-0">
@@ -330,10 +501,31 @@ const App: React.FC = () => {
               collapsed={!sidebarOpen}
             />
             <SidebarItem
+              icon={<Factory />}
+              label="Manufacturing"
+              active={activeTab === "manufacturing"}
+              onClick={() => setActiveTab("manufacturing")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
+              icon={<Eye />}
+              label="Vision & Cameras"
+              active={activeTab === "vision"}
+              onClick={() => setActiveTab("vision")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
               icon={<Network />}
               label="Logic Topology"
               active={activeTab === "logic"}
               onClick={() => setActiveTab("logic")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
+              icon={<Server />}
+              label="Infrastructure"
+              active={activeTab === "resources"}
+              onClick={() => setActiveTab("resources")}
               collapsed={!sidebarOpen}
             />
           </div>
@@ -358,6 +550,49 @@ const App: React.FC = () => {
               onClick={() => setActiveTab("sim")}
               collapsed={!sidebarOpen}
             />
+            <SidebarItem
+              icon={<BarChart2 />}
+              label="Analytics & Reports"
+              active={activeTab === "analytics"}
+              onClick={() => setActiveTab("analytics")}
+              collapsed={!sidebarOpen}
+            />
+          </div>
+
+          <div className="mb-4">
+            {sidebarOpen && (
+              <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">
+                Governance
+              </div>
+            )}
+            <SidebarItem
+              icon={<BrainCircuit />}
+              label="AI Oversight"
+              active={activeTab === "oversight"}
+              onClick={() => setActiveTab("oversight")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
+              icon={<Shield />}
+              label="Security & Access"
+              active={activeTab === "security"}
+              onClick={() => setActiveTab("security")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
+              icon={<CreditCard />}
+              label="Billing & Plan"
+              active={activeTab === "billing"}
+              onClick={() => setActiveTab("billing")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
+              icon={<HardDrive />}
+              label="System Admin"
+              active={activeTab === "admin"}
+              onClick={() => setActiveTab("admin")}
+              collapsed={!sidebarOpen}
+            />
           </div>
 
           <div className="mb-4">
@@ -366,6 +601,20 @@ const App: React.FC = () => {
                 System
               </div>
             )}
+            <SidebarItem
+              icon={<Link2 />}
+              label="Integrations"
+              active={activeTab === "integrations"}
+              onClick={() => setActiveTab("integrations")}
+              collapsed={!sidebarOpen}
+            />
+            <SidebarItem
+              icon={<HelpCircle />}
+              label="Help & Support"
+              active={activeTab === "support"}
+              onClick={() => setActiveTab("support")}
+              collapsed={!sidebarOpen}
+            />
             <SidebarItem
               icon={<FileText />}
               label="Documentation"
@@ -385,141 +634,222 @@ const App: React.FC = () => {
 
         {/* Sidebar Toggle */}
         <div className="p-4 border-t border-quantum-600 shrink-0 flex justify-center">
-            <button 
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="w-8 h-8 flex items-center justify-center rounded bg-quantum-800 hover:bg-quantum-700 text-slate-400 hover:text-cyan-400 border border-quantum-700 hover:border-cyan-500/30 transition-all shadow-sm"
-                title="Toggle Sidebar"
-            >
-                {sidebarOpen ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
-            </button>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded bg-quantum-800 hover:bg-quantum-700 text-slate-400 hover:text-cyan-400 border border-quantum-700 hover:border-cyan-500/30 transition-all shadow-sm"
+            title="Toggle Sidebar"
+          >
+            {sidebarOpen ? (
+              <ChevronsLeft className="w-4 h-4" />
+            ) : (
+              <ChevronsRight className="w-4 h-4" />
+            )}
+          </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full">
-        
+      <main className="flex-1 flex flex-col min-w-0 min-h-0 relative z-10 bg-quantum-950/50">
         {/* Initialization Banner */}
-        {Object.values(modulesStatus).some(s => s !== 'success') && (
-            <div className="h-8 bg-quantum-900 border-b border-quantum-600 flex items-center justify-between px-4 shrink-0">
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider animate-pulse">Lineage Module Initializing...</span>
-                <div className="flex space-x-4">
-                    <StatusStep label="Quantum Core" status={modulesStatus.quantumCore} />
-                    <StatusStep label="Simulation" status={modulesStatus.simulation} />
-                    <StatusStep label="Document" status={modulesStatus.document} />
-                    <StatusStep label="Configuration" status={modulesStatus.configuration} />
-                </div>
+        {Object.values(modulesStatus).some((s) => s !== "success") && (
+          <div className="h-8 bg-quantum-900 border-b border-quantum-600 flex items-center justify-between px-4 shrink-0">
+            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider animate-pulse">
+              Lineage Module Initializing...
+            </span>
+            <div className="flex space-x-4">
+              <StatusStep
+                label="Quantum Core"
+                status={modulesStatus.quantumCore}
+              />
+              <StatusStep
+                label="Simulation"
+                status={modulesStatus.simulation}
+              />
+              <StatusStep label="Document" status={modulesStatus.document} />
+              <StatusStep
+                label="Configuration"
+                status={modulesStatus.configuration}
+              />
             </div>
+          </div>
         )}
 
-        {/* New Header */}
-        <Header />
+        {/* Header */}
+        <div className="shrink-0">
+          <Header onToggleContrast={toggleHighContrast} />
+        </div>
 
         {/* Dynamic Viewport */}
-        <div className="flex-1 flex overflow-hidden p-4 gap-4">
-            
-            {/* Center/Main Stage */}
-            <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-lg overflow-hidden relative">
-                
-                {/* View Content */}
-                {activeTab === 'dashboard' && <Dashboard metrics={metrics} history={history} />}
-                
-                {activeTab === 'logic' && (
-                    <div className="flex-1 flex flex-col h-full">
-                        <div className="flex justify-between items-center mb-4 shrink-0">
-                             <div className="flex items-center space-x-2">
-                                <Network className="w-5 h-5 text-cyan-400" />
-                                <h2 className="text-lg font-bold text-slate-200">Logic Topology</h2>
-                             </div>
-                             <div className="flex space-x-2">
-                                <button className="px-3 py-1 bg-quantum-700 hover:bg-quantum-600 text-xs font-mono rounded text-cyan-400 border border-quantum-500/30 transition-colors">
-                                    + ADD NODE
-                                </button>
-                                <button className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors">
-                                    AUTO-ARRANGE
-                                </button>
-                             </div>
-                        </div>
-                        <div className="flex-1 relative">
-                            <LogicGraph 
-                                nodes={INITIAL_NODES} 
-                                onNodeSelect={handleNodeSelect}
-                                selectedNodeId={selectedNodeId}
-                            />
-                        </div>
-                    </div>
-                )}
-                
-                {activeTab === 'lineage' && (
-                    modulesStatus.document === 'success' && modulesStatus.quantumCore === 'success' 
-                    ? <LineageView /> 
-                    : <ModulePlaceholder label="Lineage" status={modulesStatus.document === 'loading' || modulesStatus.quantumCore === 'loading' ? 'loading' : 'pending'} />
-                )}
+        <div className="flex-1 flex overflow-auto p-4 gap-4 min-h-0">
+          {/* Center/Main Stage */}
+          <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-lg overflow-hidden relative">
+            {/* View Content */}
+            {activeTab === "dashboard" && (
+              <Dashboard metrics={metrics} history={history} />
+            )}
 
-                {activeTab === 'sim' && (
-                    modulesStatus.simulation === 'success' 
-                    ? <SimulationView /> 
-                    : <ModulePlaceholder label="Simulation" status={modulesStatus.simulation} />
-                )}
+            {activeTab === "logic" && (
+              <div className="flex-1 flex flex-col h-full">
+                <div className="flex justify-between items-center mb-4 shrink-0">
+                  <div className="flex items-center space-x-2">
+                    <Network className="w-5 h-5 text-cyan-400" />
+                    <h2 className="text-lg font-bold text-slate-200">
+                      Logic Topology
+                    </h2>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setBuilderMode(!builderMode)}
+                      className={`px-3 py-1 text-xs font-mono rounded border transition-colors flex items-center ${
+                        builderMode
+                          ? "bg-cyan-900/50 border-cyan-500 text-cyan-300"
+                          : "bg-quantum-800 border-quantum-600 text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      {builderMode ? (
+                        <Hammer className="w-3 h-3 mr-2" />
+                      ) : (
+                        <Monitor className="w-3 h-3 mr-2" />
+                      )}
+                      {builderMode ? "BUILDER MODE" : "VIEWER MODE"}
+                    </button>
+                    <button className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors">
+                      AUTO-ARRANGE
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 flex relative overflow-hidden">
+                  {builderMode && <BuilderPalette />}
+                  <div className="flex-1 relative">
+                    <LogicGraph
+                      nodes={INITIAL_NODES}
+                      onNodeSelect={handleNodeSelect}
+                      selectedNodeId={selectedNodeId}
+                      builderMode={builderMode}
+                    />
+                  </div>
+                </div>
+                {/* Global Job Queue Panel - Pinned to bottom of Logic View */}
+                <JobQueue />
+              </div>
+            )}
 
-                {activeTab === 'docs' && (
-                    modulesStatus.document === 'success' 
-                    ? <DocumentsView /> 
-                    : <ModulePlaceholder label="Documents" status={modulesStatus.document} />
-                )}
+            {activeTab === "lineage" &&
+              (modulesStatus.document === "success" &&
+              modulesStatus.quantumCore === "success" ? (
+                <LineageView modulesStatus={modulesStatus} />
+              ) : (
+                <ModulePlaceholder
+                  label="Lineage"
+                  status={
+                    modulesStatus.document === "loading" ||
+                    modulesStatus.quantumCore === "loading"
+                      ? "loading"
+                      : "pending"
+                  }
+                />
+              ))}
 
-                {activeTab === 'settings' && (
-                    modulesStatus.configuration === 'success' 
-                    ? <ConfigurationView /> 
-                    : <ModulePlaceholder label="Configuration" status={modulesStatus.configuration} />
-                )}
+            {activeTab === "sim" &&
+              (modulesStatus.simulation === "success" ? (
+                <SimulationView />
+              ) : (
+                <ModulePlaceholder
+                  label="Simulation"
+                  status={modulesStatus.simulation}
+                />
+              ))}
 
+            {activeTab === "analytics" && <AnalyticsView />}
+            {activeTab === "resources" && <ResourceView />}
+            {activeTab === "oversight" && <AIOversightView />}
+            {activeTab === "vision" && <LiveFeedView />}
+            {activeTab === "security" && <SecurityView />}
+            {activeTab === "billing" && <BillingView />}
+            {activeTab === "support" && <SupportView />}
+            {activeTab === "admin" && <AdminView />}
+            {activeTab === "manufacturing" && <ManufacturingView />}
+            {activeTab === "integrations" && <IntegrationsView />}
+
+            {activeTab === "docs" &&
+              (modulesStatus.document === "success" ? (
+                <DocumentsView />
+              ) : (
+                <ModulePlaceholder
+                  label="Documents"
+                  status={modulesStatus.document}
+                />
+              ))}
+
+            {activeTab === "settings" &&
+              (modulesStatus.configuration === "success" ? (
+                <ConfigurationView />
+              ) : (
+                <ModulePlaceholder
+                  label="Configuration"
+                  status={modulesStatus.configuration}
+                />
+              ))}
+          </div>
+
+          {/* Right Control Column */}
+          <div className="w-80 flex flex-col space-y-4 shrink-0">
+            {/* Context-Aware Top Panel - uses fixed heights to avoid layout thrashing */}
+            <div className="h-[300px] shrink-0 transition-all duration-300 ease-in-out">
+              {selectedNodeId && selectedNode && selectedNodeDetails ? (
+                <NodeInspector
+                  node={selectedNode}
+                  details={selectedNodeDetails}
+                  modulesStatus={modulesStatus}
+                  onClose={handleCloseNodeInspector}
+                  onAction={handleInspectorAction}
+                />
+              ) : (
+                <AIOperator addLog={addLog} />
+              )}
             </div>
 
-            {/* Right Control Column */}
-            <div className="w-80 flex flex-col space-y-4 shrink-0">
-                
-                {/* Context-Aware Top Panel - uses fixed heights to avoid layout thrashing */}
-                <div className="h-[300px] shrink-0 transition-all duration-300 ease-in-out">
-                    {selectedNodeId && selectedNode && selectedNodeDetails ? (
-                        <NodeInspector 
-                            node={selectedNode} 
-                            details={selectedNodeDetails}
-                            modulesStatus={modulesStatus}
-                            onClose={() => setSelectedNodeId(null)}
-                            onAction={handleInspectorAction}
-                        />
-                    ) : (
-                        <AIOperator addLog={addLog} />
-                    )}
-                </div>
-
-                {/* Bottom Panel (Logs) */}
-                <div className="flex-1 min-h-0">
-                    <ConsoleLogger logs={logs} />
-                </div>
-
+            {/* Bottom Panel (Logs) */}
+            <div className="flex-1 min-h-0">
+              <ConsoleLogger logs={logs} />
             </div>
-
+          </div>
         </div>
       </main>
     </div>
   );
 };
 
-const StatusStep = ({ label, status }: { label: string, status: HandshakeState }) => (
-    <div className="flex items-center space-x-1.5 opacity-80">
-        {status === 'success' ? <CheckCircle2 className="w-3 h-3 text-quantum-success" /> : 
-         status === 'loading' ? <CircleDashed className="w-3 h-3 text-cyan-400 animate-spin" /> :
-         <div className="w-3 h-3 rounded-full border border-slate-600"></div>}
-        <span className={`text-[10px] font-mono ${status === 'success' ? 'text-slate-300' : 'text-slate-500'}`}>{label}</span>
-    </div>
+const StatusStep = ({
+  label,
+  status,
+}: {
+  label: string;
+  status: HandshakeState;
+}) => (
+  <div className="flex items-center space-x-1.5 opacity-80">
+    {status === "success" ? (
+      <CheckCircle2 className="w-3 h-3 text-quantum-success" />
+    ) : status === "loading" ? (
+      <CircleDashed className="w-3 h-3 text-cyan-400 animate-spin" />
+    ) : (
+      <div className="w-3 h-3 rounded-full border border-slate-600"></div>
+    )}
+    <span
+      className={`text-[10px] font-mono ${
+        status === "success" ? "text-slate-300" : "text-slate-500"
+      }`}
+    >
+      {label}
+    </span>
+  </div>
 );
 
-const SidebarItem: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
-  active: boolean; 
-  collapsed: boolean; 
+const SidebarItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
   onClick: () => void;
 }> = ({ icon, label, active, collapsed, onClick }) => (
   <button
