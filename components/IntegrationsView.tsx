@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
     Webhook, Key, LayoutTemplate, Plus, RefreshCw, Copy, Check, 
     CloudLightning, Shield, Globe, Terminal, Box, Trash2, X, CheckSquare, Square, Loader2,
-    Save, FileJson, Edit3
+    Save, FileJson, Edit3, AlertTriangle
 } from 'lucide-react';
 
 interface Integration {
@@ -65,6 +65,7 @@ export const IntegrationsView: React.FC = () => {
     const [newTokenScopes, setNewTokenScopes] = useState<string[]>(['read']);
     const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [showRevokeModal, setShowRevokeModal] = useState(false);
 
     // --- Presets State ---
     const [presets, setPresets] = useState<Preset[]>(INITIAL_PRESETS);
@@ -105,9 +106,12 @@ export const IntegrationsView: React.FC = () => {
     // --- API Key Handlers ---
 
     const handleRevokeAllKeys = () => {
-        if (window.confirm("DANGER: This will immediately revoke all API keys. Production services may be interrupted. Are you sure?")) {
-            setApiKeys([]);
-        }
+        setShowRevokeModal(true);
+    };
+
+    const confirmRevokeAll = () => {
+        setApiKeys([]);
+        setShowRevokeModal(false);
     };
 
     const handleCopyKey = (id: string, keyString: string) => {
@@ -236,6 +240,38 @@ export const IntegrationsView: React.FC = () => {
                             >
                                 Connect
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Revoke All Keys Modal */}
+            {showRevokeModal && (
+                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-quantum-950 border border-red-500/50 rounded-lg w-full max-w-sm p-6 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-red-600 animate-pulse"></div>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="p-3 bg-red-900/20 rounded-full border border-red-500/30 mb-4">
+                                <AlertTriangle className="w-8 h-8 text-red-500" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-100 mb-2">Revoke All Keys?</h3>
+                            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                                DANGER: This will immediately invalidate all active API keys. Production services relying on these keys will stop working. This action cannot be undone.
+                            </p>
+                            <div className="flex w-full space-x-3">
+                                <button 
+                                    onClick={() => setShowRevokeModal(false)} 
+                                    className="flex-1 py-2 bg-quantum-900 border border-quantum-700 hover:bg-quantum-800 text-slate-300 text-xs font-bold rounded transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={confirmRevokeAll}
+                                    className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded shadow-lg transition-colors flex items-center justify-center"
+                                >
+                                    <Trash2 className="w-3 h-3 mr-2" /> Revoke All
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
