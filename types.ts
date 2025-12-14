@@ -1,3 +1,4 @@
+
 export enum SystemStatus {
   OPERATIONAL = 'OPERATIONAL',
   OPTIMIZING = 'OPTIMIZING',
@@ -59,6 +60,20 @@ export interface NodeDetails {
     prediction: string;
     anomalyProbability: string;
   };
+}
+
+export interface EdgeDetails {
+  id: string;
+  source: string;
+  target: string;
+  type: 'Data Stream' | 'Control Signal' | 'Power' | 'Quantum Link';
+  metrics: {
+    throughput: string;
+    latency: string;
+    errorRate: string;
+    protocol: string;
+  };
+  status: 'active' | 'congested' | 'idle';
 }
 
 export interface SystemMetrics {

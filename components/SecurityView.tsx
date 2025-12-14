@@ -19,7 +19,12 @@ const INITIAL_USERS: UserData[] = [
     { id: 'USR-004', name: 'K. Lee', role: 'Engineer', mfa: false, lastLogin: '2d ago' },
 ];
 
-export const SecurityView: React.FC = () => {
+interface SecurityViewProps {
+    isSystemLocked?: boolean;
+    onToggleLockdown?: (locked: boolean) => void;
+}
+
+export const SecurityView: React.FC<SecurityViewProps> = ({ isSystemLocked = false, onToggleLockdown }) => {
   const [activeTab, setActiveTab] = useState<'access' | 'audit' | 'compliance'>('access');
   
   // Access Control State
@@ -29,7 +34,6 @@ export const SecurityView: React.FC = () => {
   const [formData, setFormData] = useState({ name: '', role: 'Operator' });
 
   // Security Center State
-  const [lockdownActive, setLockdownActive] = useState(false);
   const [lockdownProcessing, setLockdownProcessing] = useState(false);
   const [showLockdownModal, setShowLockdownModal] = useState(false);
   
@@ -61,7 +65,6 @@ export const SecurityView: React.FC = () => {
   const handleSaveUser = () => {
       if (!formData.name) return;
 
-      // TODO: Replace with real backend call to create/update user
       if (editingUser) {
           setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, name: formData.name, role: formData.role } : u));
       } else {
@@ -78,15 +81,16 @@ export const SecurityView: React.FC = () => {
   };
 
   const handleLockdownClick = () => {
-      // If lockdown is active, we just lift it for now (simplified for demo toggle)
-      // If inactive, open modal to verify master key
-      if (lockdownActive) {
-          // In real app, lifting would also require auth. Simplified here.
+      // If lockdown is active, we trigger the unlock flow (which might be handled by App level, 
+      // but if we are here, we can also trigger it)
+      if (isSystemLocked) {
+          // Typically this view wouldn't be accessible if locked, 
+          // but if we are in a 'view-only' mode:
           setLockdownProcessing(true);
           setTimeout(() => {
-              setLockdownActive(false);
+              if(onToggleLockdown) onToggleLockdown(false);
               setLockdownProcessing(false);
-          }, 2000);
+          }, 1000);
       } else {
           setKeyInput('');
           setShowLockdownModal(true);
@@ -110,9 +114,8 @@ export const SecurityView: React.FC = () => {
       setShowLockdownModal(false);
       setLockdownProcessing(true);
       
-      // TODO: Replace with real backend call to POST /api/security/lockdown
       setTimeout(() => {
-          setLockdownActive(true);
+          if (onToggleLockdown) onToggleLockdown(true);
           setLockdownProcessing(false);
       }, 1500);
   };
@@ -120,19 +123,14 @@ export const SecurityView: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden relative">
         
-        {/* Lockdown Overlay */}
-        {lockdownActive && !lockdownProcessing && (
+        {/* Lockdown Overlay (Local view feedback, though global covers it usually) */}
+        {isSystemLocked && !lockdownProcessing && (
             <div className="absolute top-0 left-0 right-0 z-50 bg-red-600/90 text-white px-4 py-2 flex justify-between items-center shadow-2xl animate-pulse">
                 <div className="flex items-center space-x-2 font-bold uppercase tracking-widest">
                     <AlertTriangle className="w-5 h-5" />
                     <span>System Lockdown Active</span>
                 </div>
-                <button 
-                    onClick={handleLockdownClick} 
-                    className="px-3 py-1 bg-white text-red-600 text-xs font-bold rounded hover:bg-slate-200 shadow-lg"
-                >
-                    Authenticate to Lift
-                </button>
+                <div className="text-xs">Access Restricted</div>
             </div>
         )}
 
@@ -378,25 +376,25 @@ export const SecurityView: React.FC = () => {
                                 <SecurityCheck label="Backup Integrity" status="pass" />
                             </div>
                         </div>
-                        <div className={`p-4 border rounded-lg transition-all duration-300 ${lockdownActive ? 'bg-red-950 border-red-500' : 'bg-red-900/10 border-red-500/20'}`}>
-                            <h4 className={`text-xs font-bold uppercase mb-2 ${lockdownActive ? 'text-white' : 'text-red-400'}`}>Emergency Protocols</h4>
+                        <div className={`p-4 border rounded-lg transition-all duration-300 ${isSystemLocked ? 'bg-red-950 border-red-500' : 'bg-red-900/10 border-red-500/20'}`}>
+                            <h4 className={`text-xs font-bold uppercase mb-2 ${isSystemLocked ? 'text-white' : 'text-red-400'}`}>Emergency Protocols</h4>
                             <button 
                                 onClick={handleLockdownClick}
                                 disabled={lockdownProcessing}
                                 className={`w-full py-2 text-xs font-bold rounded shadow-lg transition-all flex items-center justify-center ${
-                                    lockdownActive 
+                                    isSystemLocked 
                                     ? 'bg-white text-red-600 hover:bg-slate-200' 
                                     : 'bg-red-600 hover:bg-red-500 text-white'
                                 }`}
                             >
                                 {lockdownProcessing ? (
-                                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> {lockdownActive ? 'LIFTING...' : 'PROCESSING...'}</>
+                                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> {isSystemLocked ? 'LIFTING...' : 'PROCESSING...'}</>
                                 ) : (
-                                    <>{lockdownActive ? 'LIFT LOCKDOWN' : 'LOCKDOWN SYSTEM'}</>
+                                    <>{isSystemLocked ? 'LIFT LOCKDOWN' : 'LOCKDOWN SYSTEM'}</>
                                 )}
                             </button>
-                            <p className={`text-[10px] mt-2 text-center ${lockdownActive ? 'text-red-200' : 'text-red-300/60'}`}>
-                                {lockdownActive ? 'System is currently frozen. Auth required.' : 'Requires Master Key Authorization'}
+                            <p className={`text-[10px] mt-2 text-center ${isSystemLocked ? 'text-red-200' : 'text-red-300/60'}`}>
+                                {isSystemLocked ? 'System is frozen. Auth required.' : 'Requires Master Key Authorization'}
                             </p>
                         </div>
                     </div>

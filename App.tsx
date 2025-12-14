@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, Network, FileText, Settings, 
   ChevronsLeft, ChevronsRight, CheckCircle2, CircleDashed, AlertCircle, Database, GitBranch, PlayCircle, Activity,
-  Hammer, Monitor, BarChart2, Server, Shield, CreditCard, HelpCircle, HardDrive, Factory, Link2, BrainCircuit, Eye, Lock, Fingerprint, ArrowRight
+  Hammer, Monitor, BarChart2, Server, Shield, CreditCard, HelpCircle, HardDrive, Factory, Link2, BrainCircuit, Eye, Lock, Fingerprint, ArrowRight,
+  ShieldAlert, Mail, Smartphone, RefreshCw, Unlock
 } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { ConsoleLogger } from './components/ConsoleLogger';
 import { LogicGraph } from './components/LogicGraph';
 import { AIOperator } from './components/AIOperator';
 import { NodeInspector } from './components/NodeInspector';
+import { EdgeInspector } from './components/EdgeInspector';
 import { Header } from './components/Header';
 import { LineageView } from './components/LineageView';
 import { SimulationView } from './components/SimulationView';
@@ -29,7 +31,7 @@ import { IntegrationsView } from './components/IntegrationsView';
 import { AIOversightView } from './components/AIOversightView';
 import { LiveFeedView } from './components/LiveFeedView';
 import { UserProfileView } from './components/UserProfileView';
-import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, SystemModulesState, HandshakeState } from './types';
+import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, EdgeDetails, SystemModulesState, HandshakeState } from './types';
 
 // --- MOCK DATA GENERATORS ---
 
@@ -110,27 +112,29 @@ const MOCK_NODE_DETAILS: Record<string, NodeDetails> = {
       anomalyProbability: "Low (<0.1%)",
     },
   },
-  "3": {
-    // AI Engine specific
-    identity: {
-      role: "Inference Unit",
-      category: "Neural Processor",
-      version: "v4.0.0-alpha",
-      dependencies: 8,
+  '3': { // AI Engine specific
+    identity: { role: 'Inference Unit', category: 'Neural Processor', version: 'v4.0.0-alpha', dependencies: 8 },
+    state: { lastExecution: 'Processing...', health: 95, activeThreads: 128, uptime: '12h 05m' },
+    intelligence: { optimizationScore: 88, prediction: 'Suggesting re-allocation of tensor cores for localized workload.', anomalyProbability: 'Medium (Logic drift detected)' }
+  }
+};
+
+const MOCK_EDGE_DETAILS: Record<string, EdgeDetails> = {
+    'default': {
+        id: 'lnk-001', source: 'Source', target: 'Target', type: 'Data Stream', 
+        status: 'active', 
+        metrics: { throughput: '1.2 GB/s', latency: '4ms', errorRate: '0.001%', protocol: 'Q-Bus v4' }
     },
-    state: {
-      lastExecution: "Processing...",
-      health: 95,
-      activeThreads: 128,
-      uptime: "12h 05m",
+    '1-3': {
+        id: '1-3', source: '1', target: '3', type: 'Quantum Link',
+        status: 'congested',
+        metrics: { throughput: '45.2 TB/s', latency: '0.02ms', errorRate: '0%', protocol: 'Entanglement' }
     },
-    intelligence: {
-      optimizationScore: 88,
-      prediction:
-        "Suggesting re-allocation of tensor cores for localized workload.",
-      anomalyProbability: "Medium (Logic drift detected)",
-    },
-  },
+    '2-5': {
+        id: '2-5', source: '2', target: '5', type: 'Control Signal',
+        status: 'active',
+        metrics: { throughput: '12 kb/s', latency: '12ms', errorRate: '0.1%', protocol: 'CAN-Bus' }
+    }
 };
 
 const generateMockHistory = () => {
@@ -142,7 +146,139 @@ const generateMockHistory = () => {
   }));
 };
 
-// --- LOGIN SCREEN COMPONENT ---
+// --- COMPONENTS ---
+
+const LockdownOverlay = ({ onUnlock }: { onUnlock: () => void }) => {
+    const [step, setStep] = useState<'method' | 'sending' | 'otp'>('method');
+    const [otp, setOtp] = useState('');
+    const [method, setMethod] = useState<'email' | 'sms' | null>(null);
+    const [error, setError] = useState(false);
+
+    const handleSendOtp = (selectedMethod: 'email' | 'sms') => {
+        setMethod(selectedMethod);
+        setStep('sending');
+        // Simulate network delay
+        setTimeout(() => {
+            setStep('otp');
+        }, 2000);
+    };
+
+    const handleVerify = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Mock verification: code must be "123456"
+        if (otp === '123456') {
+            setError(false);
+            onUnlock();
+        } else {
+            setError(true);
+            setOtp('');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+            {/* Ambient Red Pulse */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(220,38,38,0.2)_100%)] pointer-events-none animate-pulse"></div>
+            
+            {/* Main Alert Box */}
+            <div className="w-full max-w-lg bg-black border-2 border-red-600 rounded-lg shadow-[0_0_50px_rgba(220,38,38,0.5)] p-8 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-red-600 animate-[pulse_0.5s_infinite]"></div>
+                
+                <div className="flex flex-col items-center text-center">
+                    <div className="p-4 bg-red-900/30 rounded-full border-2 border-red-600 mb-6 animate-bounce">
+                        <ShieldAlert className="w-12 h-12 text-red-500" />
+                    </div>
+                    
+                    <h1 className="text-3xl font-black text-red-500 tracking-[0.2em] mb-2 uppercase">System Lockdown</h1>
+                    <p className="text-sm text-red-300 mb-8 font-mono">
+                        Global security protocols engaged. All control surfaces are disabled.
+                        <br/>
+                        Authentication required to restore operations.
+                    </p>
+
+                    {step === 'method' && (
+                        <div className="w-full space-y-3">
+                            <button 
+                                onClick={() => handleSendOtp('sms')}
+                                className="w-full flex items-center justify-between px-6 py-4 bg-red-900/20 hover:bg-red-900/40 border border-red-800 hover:border-red-500 rounded group transition-all"
+                            >
+                                <div className="flex items-center text-slate-300 group-hover:text-white">
+                                    <Smartphone className="w-5 h-5 mr-3" />
+                                    <span className="text-sm font-bold">Send SMS Code</span>
+                                </div>
+                                <span className="text-xs text-slate-500 font-mono">***-***-8842</span>
+                            </button>
+                            <button 
+                                onClick={() => handleSendOtp('email')}
+                                className="w-full flex items-center justify-between px-6 py-4 bg-red-900/20 hover:bg-red-900/40 border border-red-800 hover:border-red-500 rounded group transition-all"
+                            >
+                                <div className="flex items-center text-slate-300 group-hover:text-white">
+                                    <Mail className="w-5 h-5 mr-3" />
+                                    <span className="text-sm font-bold">Send Email Code</span>
+                                </div>
+                                <span className="text-xs text-slate-500 font-mono">admin@***.com</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {step === 'sending' && (
+                        <div className="py-8 flex flex-col items-center">
+                            <RefreshCw className="w-10 h-10 text-red-500 animate-spin mb-4" />
+                            <span className="text-xs text-red-300 font-mono tracking-widest uppercase">
+                                Generating Secure Token...
+                            </span>
+                        </div>
+                    )}
+
+                    {step === 'otp' && (
+                        <form onSubmit={handleVerify} className="w-full animate-in slide-in-from-right-4">
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-red-400 uppercase mb-2 text-center">
+                                    Enter 6-Digit Code sent to {method === 'sms' ? 'Mobile' : 'Email'}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    autoFocus
+                                    maxLength={6}
+                                    className={`w-full bg-red-950/50 border-2 ${error ? 'border-red-500 animate-shake' : 'border-red-900 focus:border-red-500'} rounded p-4 text-center text-2xl font-mono text-white tracking-[0.5em] outline-none transition-colors placeholder-red-900/50`}
+                                    placeholder="000000"
+                                    value={otp}
+                                    onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                                />
+                                {error && (
+                                    <p className="text-xs text-red-500 mt-2 font-bold text-center">
+                                        INVALID TOKEN. ACCESS DENIED.
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex space-x-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setStep('method')}
+                                    className="flex-1 py-3 bg-transparent border border-red-900 text-red-500 text-xs font-bold rounded hover:bg-red-950"
+                                >
+                                    BACK
+                                </button>
+                                <button 
+                                    type="submit"
+                                    disabled={otp.length !== 6}
+                                    className="flex-[2] py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded shadow-[0_0_20px_rgba(220,38,38,0.4)] flex items-center justify-center"
+                                >
+                                    <Unlock className="w-4 h-4 mr-2" /> AUTHENTICATE
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            </div>
+            
+            <div className="mt-8 font-mono text-xs text-red-900/50">
+                SYSTEM ID: Q-OS-742-LCK | SESSION: TERMINATED
+            </div>
+        </div>
+    );
+};
+
 const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
     const [isLoading, setIsLoading] = useState(false);
 
@@ -225,11 +361,15 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'logic' | 'lineage' | 'sim' | 'analytics' | 'manufacturing' | 'vision' | 'integrations' | 'docs' | 'settings' | 'resources' | 'security' | 'billing' | 'support' | 'admin' | 'oversight' | 'profile'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [criticalErrorOpen, setCriticalErrorOpen] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
-  const [autoArrangeTrigger, setAutoArrangeTrigger] = useState(0); // State for auto-arrange
+  const [autoArrangeTrigger, setAutoArrangeTrigger] = useState(0); 
+  
+  // Global Lockdown State
+  const [isSystemLocked, setIsSystemLocked] = useState(false);
   
   // Handshake State
   const [modulesStatus, setModulesStatus] = useState<SystemModulesState>({
@@ -273,42 +413,37 @@ const App: React.FC = () => {
   // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle Shortcuts Modal
-      if (e.key === "?") {
-        setShortcutsOpen((prev) => !prev);
-      }
-      // Critical Error Test (Shift + !)
-      if (e.key === "!" && e.shiftKey) {
-        setCriticalErrorOpen(true);
-      }
-      // Navigation Shortcuts (Shift + Key)
-      if (e.shiftKey) {
-        switch (e.key.toLowerCase()) {
-          case "d":
-            setActiveTab("dashboard");
-            break;
-          case "l":
-            setActiveTab("logic");
-            break;
-          case "s":
-            setActiveTab("sim");
-            break;
-          case "a":
-            setActiveTab("analytics");
-            break;
+        // SECURITY CHECK: Disable hotkeys if locked
+        if (isSystemLocked) return;
+
+        // Toggle Shortcuts Modal
+        if (e.key === '?') {
+            setShortcutsOpen(prev => !prev);
         }
-      }
-      // Escape to close things
-      if (e.key === "Escape") {
-        if (selectedNodeId) handleCloseNodeInspector();
-        setShortcutsOpen(false);
-        setCriticalErrorOpen(false);
-      }
+        // Critical Error Test (Shift + !)
+        if (e.key === '!' && e.shiftKey) {
+            setCriticalErrorOpen(true);
+        }
+        // Navigation Shortcuts (Shift + Key)
+        if (e.shiftKey) {
+            switch(e.key.toLowerCase()) {
+                case 'd': setActiveTab('dashboard'); break;
+                case 'l': setActiveTab('logic'); break;
+                case 's': setActiveTab('sim'); break;
+                case 'a': setActiveTab('analytics'); break;
+            }
+        }
+        // Escape to close things
+        if (e.key === 'Escape') {
+            if (selectedNodeId || selectedEdgeId) handleCloseInspector();
+            setShortcutsOpen(false);
+            setCriticalErrorOpen(false);
+        }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodeId, selectedEdgeId, isSystemLocked]);
 
   // Initialization Handshake Sequence
   useEffect(() => {
@@ -352,15 +487,29 @@ const App: React.FC = () => {
   }, [addLog, isLoggedIn]);
 
   const handleNodeSelect = (nodeId: string) => {
-    setSelectedNodeId(nodeId);
-    addLog(`Operator selected node ID: ${nodeId}`, "INFO", "UI");
+    if (!nodeId) {
+        setSelectedNodeId(null);
+    } else {
+        setSelectedNodeId(nodeId);
+        setSelectedEdgeId(null);
+        addLog(`Operator selected node ID: ${nodeId}`, 'INFO', 'UI');
+    }
   };
 
-  const handleCloseNodeInspector = () => {
-    setSelectedNodeId(null);
-    // Req 16: UI Recovery Microcopy
-    addLog("Node view closed — topology reset in safe mode.", "INFO", "UI");
-    addLog("Restoring viewport alignment...", "INFO", "SYS");
+  const handleEdgeSelect = (edgeId: string) => {
+      if (!edgeId) {
+          setSelectedEdgeId(null);
+      } else {
+          setSelectedEdgeId(edgeId);
+          setSelectedNodeId(null);
+          addLog(`Operator inspected connection: ${edgeId}`, 'INFO', 'UI');
+      }
+  };
+
+  const handleCloseInspector = () => {
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      addLog('Inspector closed — viewport focus reset.', 'INFO', 'UI');
   };
 
   const handleInspectorAction = (action: string) => {
@@ -453,7 +602,6 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
       setIsLoggedIn(false);
-      // Reset state if needed
       setSidebarOpen(true);
       setActiveTab('dashboard');
   };
@@ -464,6 +612,8 @@ const App: React.FC = () => {
 
   const selectedNode = INITIAL_NODES.find(n => n.id === selectedNodeId);
   const selectedNodeDetails = selectedNode ? (MOCK_NODE_DETAILS[selectedNode.id] || MOCK_NODE_DETAILS['default']) : null;
+  
+  const selectedEdgeDetails = selectedEdgeId ? (MOCK_EDGE_DETAILS[selectedEdgeId] || { ...MOCK_EDGE_DETAILS['default'], id: selectedEdgeId, source: selectedEdgeId.split('-')[0], target: selectedEdgeId.split('-')[1] }) : null;
 
   // Helper component for Module Loading State
   const ModulePlaceholder = ({
@@ -501,7 +651,18 @@ const App: React.FC = () => {
 
   
   return (
-    <div className="flex h-screen w-full bg-quantum-950 text-slate-300 font-sans relative">
+    <div className="flex h-screen w-full bg-quantum-950 text-slate-300 font-sans overflow-hidden relative">
+      
+      {/* Global Lockdown Overlay */}
+      {isSystemLocked && (
+          <LockdownOverlay 
+            onUnlock={() => {
+                setIsSystemLocked(false);
+                addLog('System lockdown lifted by authorized user.', 'SUCCESS', 'SEC');
+            }} 
+          />
+      )}
+
       {/* Background ambient effects */}
      <div className="fixed inset-0 pointer-events-none z-0">
   <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px]" />
@@ -509,340 +670,227 @@ const App: React.FC = () => {
 </div>
 
       {/* Global Modals */}
-      <ShortcutsModal
-        isOpen={shortcutsOpen}
-        onClose={() => setShortcutsOpen(false)}
-      />
-      <CriticalErrorModal
-        isOpen={criticalErrorOpen}
-        onClose={() => setCriticalErrorOpen(false)}
-      />
+      <ShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <CriticalErrorModal isOpen={criticalErrorOpen} onClose={() => setCriticalErrorOpen(false)} />
 
-      {/* Sidebar */}
-      <aside
-        className={`
-          flex flex-col bg-quantum-900 border-r border-quantum-600 transition-all duration-300 z-30 shadow-xl
-          ${sidebarOpen ? "w-64" : "w-16"}
-        `}
-      >
-        <div className="h-16 flex items-center px-4 border-b border-quantum-600 bg-quantum-900 shrink-0">
-          <Activity className="w-6 h-6 text-cyan-400 shrink-0" />
-          <span
-            className={`ml-3 font-bold tracking-widest text-slate-100 transition-opacity duration-300 ${
-              !sidebarOpen && "opacity-0 hidden"
-            }`}
+      {/* APPLICATION CONTENT CONTAINER (Protected by inert/blur when locked) */}
+      <div className={`flex flex-1 h-full overflow-hidden transition-all duration-500 ${isSystemLocked ? 'blur-sm grayscale pointer-events-none select-none opacity-50' : ''}`}>
+          
+          {/* Sidebar */}
+          <aside 
+            className={`
+              flex flex-col bg-quantum-900 border-r border-quantum-600 transition-all duration-300 z-30 shadow-xl
+              ${sidebarOpen ? 'w-64' : 'w-16'}
+            `}
           >
-            LOGIC<span className="text-cyan-400">FLOW</span>
-          </span>
-        </div>
-
-        <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto custom-scrollbar">
-          <div className="mb-4">
-            {sidebarOpen && (
-              <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">
-                Operations
-              </div>
-            )}
-            <SidebarItem
-              icon={<LayoutDashboard />}
-              label="Dashboard"
-              active={activeTab === "dashboard"}
-              onClick={() => setActiveTab("dashboard")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<Factory />}
-              label="Manufacturing"
-              active={activeTab === "manufacturing"}
-              onClick={() => setActiveTab("manufacturing")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<Eye />}
-              label="Vision & Cameras"
-              active={activeTab === "vision"}
-              onClick={() => setActiveTab("vision")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<Network />}
-              label="Logic Topology"
-              active={activeTab === "logic"}
-              onClick={() => setActiveTab("logic")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<Server />}
-              label="Infrastructure"
-              active={activeTab === "resources"}
-              onClick={() => setActiveTab("resources")}
-              collapsed={!sidebarOpen}
-            />
-          </div>
-
-          <div className="mb-4">
-            {sidebarOpen && (
-              <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">
-                Analytics
-              </div>
-            )}
-            <SidebarItem
-              icon={<GitBranch />}
-              label="Data Lineage"
-              active={activeTab === "lineage"}
-              onClick={() => setActiveTab("lineage")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<PlayCircle />}
-              label="Simulation"
-              active={activeTab === "sim"}
-              onClick={() => setActiveTab("sim")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<BarChart2 />}
-              label="Analytics & Reports"
-              active={activeTab === "analytics"}
-              onClick={() => setActiveTab("analytics")}
-              collapsed={!sidebarOpen}
-            />
-          </div>
-
-          <div className="mb-4">
-            {sidebarOpen && (
-              <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">
-                Governance
-              </div>
-            )}
-            <SidebarItem
-              icon={<BrainCircuit />}
-              label="AI Oversight"
-              active={activeTab === "oversight"}
-              onClick={() => setActiveTab("oversight")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<Shield />}
-              label="Security & Access"
-              active={activeTab === "security"}
-              onClick={() => setActiveTab("security")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<CreditCard />}
-              label="Billing & Plan"
-              active={activeTab === "billing"}
-              onClick={() => setActiveTab("billing")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<HardDrive />}
-              label="System Admin"
-              active={activeTab === "admin"}
-              onClick={() => setActiveTab("admin")}
-              collapsed={!sidebarOpen}
-            />
-          </div>
-
-          <div className="mb-4">
-            {sidebarOpen && (
-              <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">
-                System
-              </div>
-            )}
-            <SidebarItem
-              icon={<Link2 />}
-              label="Integrations"
-              active={activeTab === "integrations"}
-              onClick={() => setActiveTab("integrations")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<HelpCircle />}
-              label="Help & Support"
-              active={activeTab === "support"}
-              onClick={() => setActiveTab("support")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<FileText />}
-              label="Documentation"
-              active={activeTab === "docs"}
-              onClick={() => setActiveTab("docs")}
-              collapsed={!sidebarOpen}
-            />
-            <SidebarItem
-              icon={<Settings />}
-              label="Configuration"
-              active={activeTab === "settings"}
-              onClick={() => setActiveTab("settings")}
-              collapsed={!sidebarOpen}
-            />
-          </div>
-        </nav>
-
-        {/* Sidebar Toggle */}
-        <div className="p-4 border-t border-quantum-600 shrink-0 flex justify-center">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-8 h-8 flex items-center justify-center rounded bg-quantum-800 hover:bg-quantum-700 text-slate-400 hover:text-cyan-400 border border-quantum-700 hover:border-cyan-500/30 transition-all shadow-sm"
-            title="Toggle Sidebar"
-          >
-            {sidebarOpen ? (
-              <ChevronsLeft className="w-4 h-4" />
-            ) : (
-              <ChevronsRight className="w-4 h-4" />
-            )}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full overflow-hidden">
-        
-        {/* Initialization Banner */}
-        {Object.values(modulesStatus).some((s) => s !== "success") && (
-          <div className="h-8 bg-quantum-900 border-b border-quantum-600 flex items-center justify-between px-4 shrink-0">
-            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider animate-pulse">
-              Lineage Module Initializing...
-            </span>
-            <div className="flex space-x-4">
-              <StatusStep
-                label="Quantum Core"
-                status={modulesStatus.quantumCore}
-              />
-              <StatusStep
-                label="Simulation"
-                status={modulesStatus.simulation}
-              />
-              <StatusStep label="Document" status={modulesStatus.document} />
-              <StatusStep
-                label="Configuration"
-                status={modulesStatus.configuration}
-              />
+            <div className="h-16 flex items-center px-4 border-b border-quantum-600 bg-quantum-900 shrink-0">
+              <Activity className="w-6 h-6 text-cyan-400 shrink-0" />
+              <span className={`ml-3 font-bold tracking-widest text-slate-100 transition-opacity duration-300 ${!sidebarOpen && 'opacity-0 hidden'}`}>
+                LOGIC<span className="text-cyan-400">FLOW</span>
+              </span>
             </div>
-          </div>
-        )}
 
-        {/* Header */}
-        <Header 
-            onToggleContrast={toggleHighContrast} 
-            onNavigate={(tab) => setActiveTab(tab as any)} 
-            onLogout={handleLogout}
-        />
+            <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto custom-scrollbar">
+              <div className="mb-4">
+                 {sidebarOpen && <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">Operations</div>}
+                 <SidebarItem icon={<LayoutDashboard />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<Factory />} label="Manufacturing" active={activeTab === 'manufacturing'} onClick={() => setActiveTab('manufacturing')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<Eye />} label="Vision & Cameras" active={activeTab === 'vision'} onClick={() => setActiveTab('vision')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<Network />} label="Logic Topology" active={activeTab === 'logic'} onClick={() => setActiveTab('logic')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<Server />} label="Infrastructure" active={activeTab === 'resources'} onClick={() => setActiveTab('resources')} collapsed={!sidebarOpen} />
+              </div>
 
-        {/* Dynamic Viewport */}
-        <div className="flex-1 flex overflow-hidden p-4 gap-4">
+              <div className="mb-4">
+                 {sidebarOpen && <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">Analytics</div>}
+                 <SidebarItem icon={<GitBranch />} label="Data Lineage" active={activeTab === 'lineage'} onClick={() => setActiveTab('lineage')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<PlayCircle />} label="Simulation" active={activeTab === 'sim'} onClick={() => setActiveTab('sim')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<BarChart2 />} label="Analytics & Reports" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} collapsed={!sidebarOpen} />
+              </div>
+
+              <div className="mb-4">
+                 {sidebarOpen && <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">Governance</div>}
+                 <SidebarItem icon={<BrainCircuit />} label="AI Oversight" active={activeTab === 'oversight'} onClick={() => setActiveTab('oversight')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<Shield />} label="Security & Access" active={activeTab === 'security'} onClick={() => setActiveTab('security')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<CreditCard />} label="Billing & Plan" active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<HardDrive />} label="System Admin" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} collapsed={!sidebarOpen} />
+              </div>
+
+              <div className="mb-4">
+                 {sidebarOpen && <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">System</div>}
+                 <SidebarItem icon={<Link2 />} label="Integrations" active={activeTab === 'integrations'} onClick={() => setActiveTab('integrations')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<HelpCircle />} label="Help & Support" active={activeTab === 'support'} onClick={() => setActiveTab('support')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<FileText />} label="Documentation" active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} collapsed={!sidebarOpen} />
+                 <SidebarItem icon={<Settings />} label="Configuration" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} collapsed={!sidebarOpen} />
+              </div>
+            </nav>
+
+            {/* Sidebar Toggle */}
+            <div className="p-4 border-t border-quantum-600 shrink-0 flex justify-center">
+                <button 
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-quantum-800 hover:bg-quantum-700 text-slate-400 hover:text-cyan-400 border border-quantum-700 hover:border-cyan-500/30 transition-all shadow-sm"
+                    title="Toggle Sidebar"
+                >
+                    {sidebarOpen ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
+                </button>
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full overflow-hidden">
             
-            {/* Center/Main Stage */}
-            <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-lg overflow-hidden relative">
-                
-                {/* View Content */}
-                {activeTab === 'dashboard' && <Dashboard metrics={metrics} history={history} />}
-                
-                {activeTab === 'logic' && (
-                    <div className="flex-1 flex flex-col h-full">
-                        <div className="flex justify-between items-center mb-4 shrink-0">
-                             <div className="flex items-center space-x-2">
-                                <Network className="w-5 h-5 text-cyan-400" />
-                                <h2 className="text-lg font-bold text-slate-200">Logic Topology</h2>
-                             </div>
-                             <div className="flex space-x-2">
-                                <button 
-                                    onClick={() => setBuilderMode(!builderMode)}
-                                    className={`px-3 py-1 text-xs font-mono rounded border transition-colors flex items-center ${builderMode ? 'bg-cyan-900/50 border-cyan-500 text-cyan-300' : 'bg-quantum-800 border-quantum-600 text-slate-400 hover:text-slate-200'}`}
-                                >
-                                    {builderMode ? <Hammer className="w-3 h-3 mr-2" /> : <Monitor className="w-3 h-3 mr-2" />}
-                                    {builderMode ? 'BUILDER MODE' : 'VIEWER MODE'}
-                                </button>
-                                <button 
-                                    onClick={handleAutoArrange}
-                                    className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors"
-                                >
-                                    AUTO-ARRANGE
-                                </button>
-                             </div>
-                        </div>
-                        <div className="flex-1 flex relative overflow-hidden">
-                            {builderMode && <BuilderPalette />}
-                            <div className="flex-1 relative">
-                                <LogicGraph 
-                                    nodes={INITIAL_NODES} 
-                                    onNodeSelect={handleNodeSelect}
-                                    selectedNodeId={selectedNodeId}
-                                    builderMode={builderMode}
-                                    layoutTrigger={autoArrangeTrigger}
-                                />
-                            </div>
-                        </div>
-                        {/* Global Job Queue Panel - Pinned to bottom of Logic View */}
-                        <JobQueue />
+            {/* Initialization Banner */}
+            {Object.values(modulesStatus).some(s => s !== 'success') && (
+                <div className="h-8 bg-quantum-900 border-b border-quantum-600 flex items-center justify-between px-4 shrink-0">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider animate-pulse">Lineage Module Initializing...</span>
+                    <div className="flex space-x-4">
+                        <StatusStep label="Quantum Core" status={modulesStatus.quantumCore} />
+                        <StatusStep label="Simulation" status={modulesStatus.simulation} />
+                        <StatusStep label="Document" status={modulesStatus.document} />
+                        <StatusStep label="Configuration" status={modulesStatus.configuration} />
                     </div>
-                )}
+                </div>
+            )}
+
+            {/* Header */}
+            <Header 
+                onToggleContrast={toggleHighContrast} 
+                onNavigate={(tab) => setActiveTab(tab as any)} 
+                onLogout={handleLogout}
+            />
+
+            {/* Dynamic Viewport */}
+            <div className="flex-1 flex overflow-hidden p-4 gap-4">
                 
-                {activeTab === 'lineage' && (
-                    modulesStatus.document === 'success' && modulesStatus.quantumCore === 'success' 
-                    ? <LineageView modulesStatus={modulesStatus} /> 
-                    : <ModulePlaceholder label="Lineage" status={modulesStatus.document === 'loading' || modulesStatus.quantumCore === 'loading' ? 'loading' : 'pending'} />
-                )}
+                {/* Center/Main Stage */}
+                <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-lg overflow-hidden relative">
+                    
+                    {/* View Content */}
+                    {activeTab === 'dashboard' && <Dashboard metrics={metrics} history={history} />}
+                    
+                    {activeTab === 'logic' && (
+                        <div className="flex-1 flex flex-col h-full">
+                            <div className="flex justify-between items-center mb-4 shrink-0">
+                                 <div className="flex items-center space-x-2">
+                                    <Network className="w-5 h-5 text-cyan-400" />
+                                    <h2 className="text-lg font-bold text-slate-200">Logic Topology</h2>
+                                 </div>
+                                 <div className="flex space-x-2">
+                                    <button 
+                                        onClick={() => setBuilderMode(!builderMode)}
+                                        className={`px-3 py-1 text-xs font-mono rounded border transition-colors flex items-center ${builderMode ? 'bg-cyan-900/50 border-cyan-500 text-cyan-300' : 'bg-quantum-800 border-quantum-600 text-slate-400 hover:text-slate-200'}`}
+                                    >
+                                        {builderMode ? <Hammer className="w-3 h-3 mr-2" /> : <Monitor className="w-3 h-3 mr-2" />}
+                                        {builderMode ? 'BUILDER MODE' : 'VIEWER MODE'}
+                                    </button>
+                                    <button 
+                                        onClick={handleAutoArrange}
+                                        className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors"
+                                    >
+                                        AUTO-ARRANGE
+                                    </button>
+                                 </div>
+                            </div>
+                            <div className="flex-1 flex relative overflow-hidden">
+                                {builderMode && <BuilderPalette />}
+                                <div className="flex-1 relative">
+                                    <LogicGraph 
+                                        nodes={INITIAL_NODES} 
+                                        onNodeSelect={handleNodeSelect}
+                                        onEdgeSelect={handleEdgeSelect}
+                                        selectedNodeId={selectedNodeId}
+                                        selectedEdgeId={selectedEdgeId}
+                                        builderMode={builderMode}
+                                        layoutTrigger={autoArrangeTrigger}
+                                    />
+                                </div>
+                            </div>
+                            {/* Global Job Queue Panel - Pinned to bottom of Logic View */}
+                            <JobQueue />
+                        </div>
+                    )}
+                    
+                    {activeTab === 'lineage' && (
+                        modulesStatus.document === 'success' && modulesStatus.quantumCore === 'success' 
+                        ? <LineageView modulesStatus={modulesStatus} /> 
+                        : <ModulePlaceholder label="Lineage" status={modulesStatus.document === 'loading' || modulesStatus.quantumCore === 'loading' ? 'loading' : 'pending'} />
+                    )}
 
-                {activeTab === 'sim' && (
-                    modulesStatus.simulation === 'success' 
-                    ? <SimulationView /> 
-                    : <ModulePlaceholder label="Simulation" status={modulesStatus.simulation} />
-                )}
+                    {activeTab === 'sim' && (
+                        modulesStatus.simulation === 'success' 
+                        ? <SimulationView /> 
+                        : <ModulePlaceholder label="Simulation" status={modulesStatus.simulation} />
+                    )}
 
-                {activeTab === 'analytics' && <AnalyticsView />}
-                {activeTab === 'resources' && <ResourceView />}
-                {activeTab === 'oversight' && <AIOversightView />}
-                {activeTab === 'vision' && <LiveFeedView />}
-                {activeTab === 'security' && <SecurityView />}
-                {activeTab === 'billing' && <BillingView />}
-                {activeTab === 'support' && <SupportView />}
-                {activeTab === 'admin' && <AdminView />}
-                {activeTab === 'manufacturing' && <ManufacturingView />}
-                {activeTab === 'integrations' && <IntegrationsView />}
-                {activeTab === 'profile' && <UserProfileView />}
+                    {activeTab === 'analytics' && <AnalyticsView />}
+                    {activeTab === 'resources' && <ResourceView />}
+                    {activeTab === 'oversight' && <AIOversightView />}
+                    {activeTab === 'vision' && <LiveFeedView />}
+                    {activeTab === 'security' && (
+                        <SecurityView 
+                            isSystemLocked={isSystemLocked} 
+                            onToggleLockdown={(locked) => {
+                                setIsSystemLocked(locked);
+                                addLog(locked ? 'System entered LOCKDOWN mode.' : 'System lockdown released.', locked ? 'WARN' : 'INFO', 'SEC');
+                            }}
+                        />
+                    )}
+                    {activeTab === 'billing' && <BillingView />}
+                    {activeTab === 'support' && <SupportView />}
+                    {activeTab === 'admin' && <AdminView />}
+                    {activeTab === 'manufacturing' && <ManufacturingView />}
+                    {activeTab === 'integrations' && <IntegrationsView />}
+                    {activeTab === 'profile' && <UserProfileView />}
 
-                {activeTab === 'docs' && (
-                    modulesStatus.document === 'success' 
-                    ? <DocumentsView /> 
-                    : <ModulePlaceholder label="Documents" status={modulesStatus.document} />
-                )}
+                    {activeTab === 'docs' && (
+                        modulesStatus.document === 'success' 
+                        ? <DocumentsView /> 
+                        : <ModulePlaceholder label="Documents" status={modulesStatus.document} />
+                    )}
 
-                {activeTab === 'settings' && (
-                    modulesStatus.configuration === 'success' 
-                    ? <ConfigurationView /> 
-                    : <ModulePlaceholder label="Configuration" status={modulesStatus.configuration} />
-                )}
+                    {activeTab === 'settings' && (
+                        modulesStatus.configuration === 'success' 
+                        ? <ConfigurationView /> 
+                        : <ModulePlaceholder label="Configuration" status={modulesStatus.configuration} />
+                    )}
+
+                </div>
+
+                {/* Right Control Column */}
+                <div className="w-80 flex flex-col space-y-4 shrink-0">
+                    
+                    {/* Context-Aware Top Panel - uses fixed heights to avoid layout thrashing */}
+                    <div className="h-[300px] shrink-0 transition-all duration-300 ease-in-out">
+                        {selectedNodeId && selectedNode && selectedNodeDetails ? (
+                            <NodeInspector 
+                                node={selectedNode} 
+                                details={selectedNodeDetails}
+                                modulesStatus={modulesStatus}
+                                onClose={handleCloseInspector}
+                                onAction={handleInspectorAction}
+                            />
+                        ) : selectedEdgeId && selectedEdgeDetails ? (
+                            <EdgeInspector 
+                                edge={selectedEdgeDetails}
+                                onClose={handleCloseInspector}
+                            />
+                        ) : (
+                            <AIOperator addLog={addLog} />
+                        )}
+                    </div>
+
+                    {/* Bottom Panel (Logs) */}
+                    <div className="flex-1 min-h-0">
+                        <ConsoleLogger logs={logs} />
+                    </div>
+
+                </div>
 
             </div>
 
-          {/* Right Control Column */}
-          <div className="w-80 flex flex-col space-y-4 shrink-0">
-            {/* Context-Aware Top Panel - uses fixed heights to avoid layout thrashing */}
-            <div className="h-[300px] shrink-0 transition-all duration-300 ease-in-out">
-              {selectedNodeId && selectedNode && selectedNodeDetails ? (
-                <NodeInspector
-                  node={selectedNode}
-                  details={selectedNodeDetails}
-                  modulesStatus={modulesStatus}
-                  onClose={handleCloseNodeInspector}
-                  onAction={handleInspectorAction}
-                />
-              ) : (
-                <AIOperator addLog={addLog} />
-              )}
-            </div>
+          </main>
+      </div>
 
-            {/* Bottom Panel (Logs) */}
-            <div className="flex-1 min-h-0">
-              <ConsoleLogger logs={logs} />
-            </div>
-          </div>
-        </div>
-      </main>
     </div>
   );
 };
