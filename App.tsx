@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, Network, FileText, Settings, 
   ChevronsLeft, ChevronsRight, CheckCircle2, CircleDashed, AlertCircle, Database, GitBranch, PlayCircle, Activity,
   Hammer, Monitor, BarChart2, Server, Shield, CreditCard, HelpCircle, HardDrive, Factory, Link2, BrainCircuit, Eye, Lock, Fingerprint, ArrowRight,
-  ShieldAlert, Mail, Smartphone, RefreshCw, Unlock
+  ShieldAlert, Mail, Smartphone, RefreshCw, Unlock, Box, CheckSquare
 } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { ConsoleLogger } from './components/ConsoleLogger';
@@ -31,11 +32,12 @@ import { IntegrationsView } from './components/IntegrationsView';
 import { AIOversightView } from './components/AIOversightView';
 import { LiveFeedView } from './components/LiveFeedView';
 import { UserProfileView } from './components/UserProfileView';
+import { ObjectRegistryView } from './components/ObjectRegistryView';
 import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, EdgeDetails, SystemModulesState, HandshakeState } from './types';
 
 // --- MOCK DATA GENERATORS ---
 
-const INITIAL_NODES: LogicNode[] = [
+const INITIAL_NODES_DATA: LogicNode[] = [
   { id: '1', label: 'Main Controller', type: ModuleType.LOGIC, status: 'active', x: 0, y: 0, connections: ['2', '3', '4'] },
   { id: '2', label: 'Sensor Array A', type: ModuleType.SENSOR, status: 'active', x: 0, y: 0, connections: ['5'] },
   { id: '3', label: 'AI Inference Engine', type: ModuleType.AI_CORE, status: 'active', x: 0, y: 0, connections: ['5', '6'] },
@@ -47,11 +49,13 @@ const INITIAL_NODES: LogicNode[] = [
 const MOCK_NODE_DETAILS: Record<string, NodeDetails> = {
   'default': {
     identity: { role: 'Process Controller', category: 'Logic Core', version: 'v2.4.1', dependencies: 3 },
+    metadata: { created: '2023-11-15', lastModified: '2h ago', owner: 'Dr. Vance' },
     state: { lastExecution: '0ms ago', health: 99, activeThreads: 12, uptime: '48h 12m' },
     intelligence: { optimizationScore: 92, prediction: 'Nominal throughput expected for next 4 cycles.', anomalyProbability: 'Low (<0.1%)' }
   },
   '3': { // AI Engine specific
     identity: { role: 'Inference Unit', category: 'Neural Processor', version: 'v4.0.0-alpha', dependencies: 8 },
+    metadata: { created: '2024-01-10', lastModified: '10m ago', owner: 'Sys_Auto' },
     state: { lastExecution: 'Processing...', health: 95, activeThreads: 128, uptime: '12h 05m' },
     intelligence: { optimizationScore: 88, prediction: 'Suggesting re-allocation of tensor cores for localized workload.', anomalyProbability: 'Medium (Logic drift detected)' }
   }
@@ -296,10 +300,14 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'logic' | 'lineage' | 'sim' | 'analytics' | 'manufacturing' | 'vision' | 'integrations' | 'docs' | 'settings' | 'resources' | 'security' | 'billing' | 'support' | 'admin' | 'oversight' | 'profile'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'logic' | 'lineage' | 'sim' | 'analytics' | 'manufacturing' | 'vision' | 'integrations' | 'docs' | 'settings' | 'resources' | 'security' | 'billing' | 'support' | 'admin' | 'oversight' | 'profile' | 'registry'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  
+  // Graph State
+  const [nodes, setNodes] = useState<LogicNode[]>(INITIAL_NODES_DATA);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  
   const [builderMode, setBuilderMode] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [criticalErrorOpen, setCriticalErrorOpen] = useState(false);
@@ -366,7 +374,7 @@ const App: React.FC = () => {
         }
         // Escape to close things
         if (e.key === 'Escape') {
-            if (selectedNodeId || selectedEdgeId) handleCloseInspector();
+            if (selectedNodeIds.length > 0 || selectedEdgeId) handleCloseInspector();
             setShortcutsOpen(false);
             setCriticalErrorOpen(false);
         }
@@ -374,7 +382,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, selectedEdgeId, isSystemLocked]);
+  }, [selectedNodeIds, selectedEdgeId, isSystemLocked]);
 
   // Initialization Handshake Sequence
   useEffect(() => {
@@ -405,14 +413,25 @@ const App: React.FC = () => {
     runHandshake();
   }, [addLog, isLoggedIn]);
 
-  const handleNodeSelect = (nodeId: string) => {
+  const handleNodeSelect = (nodeId: string, multi: boolean) => {
     if (!nodeId) {
-        setSelectedNodeId(null);
+        setSelectedNodeIds([]);
+        return;
+    } 
+    
+    if (multi) {
+        setSelectedNodeIds(prev => {
+            if (prev.includes(nodeId)) {
+                return prev.filter(id => id !== nodeId);
+            }
+            return [...prev, nodeId];
+        });
     } else {
-        setSelectedNodeId(nodeId);
-        setSelectedEdgeId(null);
-        addLog(`Operator selected node ID: ${nodeId}`, 'INFO', 'UI');
+        setSelectedNodeIds([nodeId]);
     }
+    
+    setSelectedEdgeId(null);
+    addLog(`Operator selected node ID: ${nodeId}`, 'INFO', 'UI');
   };
 
   const handleEdgeSelect = (edgeId: string) => {
@@ -420,19 +439,85 @@ const App: React.FC = () => {
           setSelectedEdgeId(null);
       } else {
           setSelectedEdgeId(edgeId);
-          setSelectedNodeId(null);
+          setSelectedNodeIds([]);
           addLog(`Operator inspected connection: ${edgeId}`, 'INFO', 'UI');
       }
   };
 
   const handleCloseInspector = () => {
-      setSelectedNodeId(null);
+      setSelectedNodeIds([]);
       setSelectedEdgeId(null);
       addLog('Inspector closed — viewport focus reset.', 'INFO', 'UI');
   };
 
   const handleInspectorAction = (action: string) => {
-    addLog(`Initiating ${action.toUpperCase()} on Node ${selectedNodeId}...`, 'AI', 'OPS');
+    addLog(`Initiating ${action.toUpperCase()} on Node Selection...`, 'AI', 'OPS');
+  };
+
+  // Grouping Logic
+  const handleGroupNodes = () => {
+      if (selectedNodeIds.length < 2) return;
+
+      const groupChildren = nodes.filter(n => selectedNodeIds.includes(n.id));
+      const remainingNodes = nodes.filter(n => !selectedNodeIds.includes(n.id));
+      
+      const groupNode: LogicNode = {
+          id: `grp-${Date.now()}`,
+          label: 'Logic Cluster',
+          type: ModuleType.GROUP,
+          status: 'active',
+          x: groupChildren[0].x,
+          y: groupChildren[0].y,
+          connections: [],
+          groupChildren: groupChildren
+      };
+
+      // Redirect connections
+      // 1. Edges pointing to children from outside -> point to group
+      // 2. Edges from children to outside -> point from group
+      // Internal edges are effectively hidden inside group children
+      
+      const newNodes = remainingNodes.map(n => {
+          const newConnections = n.connections.map(targetId => {
+              if (selectedNodeIds.includes(targetId)) return groupNode.id;
+              return targetId;
+          });
+          // Unique connections
+          return { ...n, connections: [...new Set(newConnections)] };
+      });
+
+      // Group outgoing connections
+      const childOutgoing = new Set<string>();
+      groupChildren.forEach(child => {
+          child.connections.forEach(targetId => {
+              if (!selectedNodeIds.includes(targetId)) {
+                  childOutgoing.add(targetId);
+              }
+          });
+      });
+      groupNode.connections = Array.from(childOutgoing);
+
+      setNodes([...newNodes, groupNode]);
+      setSelectedNodeIds([groupNode.id]);
+      addLog(`Grouped ${groupChildren.length} nodes into cluster ${groupNode.id}`, 'SUCCESS', 'TOPO');
+  };
+
+  const handleUngroupNode = (groupId: string) => {
+      const groupNode = nodes.find(n => n.id === groupId);
+      if (!groupNode || !groupNode.groupChildren) return;
+
+      const remainingNodes = nodes.filter(n => n.id !== groupId);
+      
+      // Restore children
+      // Need to fix incoming connections that pointed to group -> point to specific children? 
+      // Simplified: Just dumping them back. In a real system, would need robust edge re-mapping.
+      
+      // Restore connections from outside to children is hard without edge state. 
+      // For visual prototype, we just put children back.
+      
+      setNodes([...remainingNodes, ...groupNode.groupChildren]);
+      setSelectedNodeIds([]);
+      addLog(`Ungrouped cluster ${groupId}`, 'INFO', 'TOPO');
   };
 
   const toggleHighContrast = () => {
@@ -508,7 +593,9 @@ const App: React.FC = () => {
       return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
   }
 
-  const selectedNode = INITIAL_NODES.find(n => n.id === selectedNodeId);
+  // Derived state for inspector
+  const primaryNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
+  const selectedNode = primaryNodeId ? nodes.find(n => n.id === primaryNodeId) : null;
   const selectedNodeDetails = selectedNode ? (MOCK_NODE_DETAILS[selectedNode.id] || MOCK_NODE_DETAILS['default']) : null;
   
   const selectedEdgeDetails = selectedEdgeId ? (MOCK_EDGE_DETAILS[selectedEdgeId] || { ...MOCK_EDGE_DETAILS['default'], id: selectedEdgeId, source: selectedEdgeId.split('-')[0], target: selectedEdgeId.split('-')[1] }) : null;
@@ -600,6 +687,7 @@ const App: React.FC = () => {
 
               <div className="mb-4">
                  {sidebarOpen && <div className="px-3 mb-2 text-[10px] font-mono text-slate-500 uppercase">System</div>}
+                 <SidebarItem icon={<Box />} label="Object Registry" active={activeTab === 'registry'} onClick={() => setActiveTab('registry')} collapsed={!sidebarOpen} />
                  <SidebarItem icon={<Link2 />} label="Integrations" active={activeTab === 'integrations'} onClick={() => setActiveTab('integrations')} collapsed={!sidebarOpen} />
                  <SidebarItem icon={<HelpCircle />} label="Help & Support" active={activeTab === 'support'} onClick={() => setActiveTab('support')} collapsed={!sidebarOpen} />
                  <SidebarItem icon={<FileText />} label="Documentation" active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} collapsed={!sidebarOpen} />
@@ -678,13 +766,14 @@ const App: React.FC = () => {
                                 {builderMode && <BuilderPalette />}
                                 <div className="flex-1 relative">
                                     <LogicGraph 
-                                        nodes={INITIAL_NODES} 
+                                        nodes={nodes} 
                                         onNodeSelect={handleNodeSelect}
                                         onEdgeSelect={handleEdgeSelect}
-                                        selectedNodeId={selectedNodeId}
+                                        selectedNodeIds={selectedNodeIds}
                                         selectedEdgeId={selectedEdgeId}
                                         builderMode={builderMode}
                                         layoutTrigger={autoArrangeTrigger}
+                                        onUngroup={handleUngroupNode}
                                     />
                                 </div>
                             </div>
@@ -724,6 +813,7 @@ const App: React.FC = () => {
                     {activeTab === 'manufacturing' && <ManufacturingView />}
                     {activeTab === 'integrations' && <IntegrationsView />}
                     {activeTab === 'profile' && <UserProfileView />}
+                    {activeTab === 'registry' && <ObjectRegistryView />}
 
                     {activeTab === 'docs' && (
                         modulesStatus.document === 'success' 
@@ -744,13 +834,16 @@ const App: React.FC = () => {
                     
                     {/* Context-Aware Top Panel - uses fixed heights to avoid layout thrashing */}
                     <div className="h-[300px] shrink-0 transition-all duration-300 ease-in-out">
-                        {selectedNodeId && selectedNode && selectedNodeDetails ? (
+                        {(selectedNodeIds.length > 0) ? (
                             <NodeInspector 
                                 node={selectedNode} 
                                 details={selectedNodeDetails}
                                 modulesStatus={modulesStatus}
+                                selectedNodeIds={selectedNodeIds}
                                 onClose={handleCloseInspector}
                                 onAction={handleInspectorAction}
+                                onGroup={handleGroupNodes}
+                                onLogAction={(msg, type) => addLog(msg, type === 'success' ? 'SUCCESS' : 'INFO', 'UI')}
                             />
                         ) : selectedEdgeId && selectedEdgeDetails ? (
                             <EdgeInspector 

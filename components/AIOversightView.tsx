@@ -1,31 +1,32 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { 
     BrainCircuit, CheckCircle, XCircle, AlertTriangle, RefreshCw, 
     Flag, Search, ChevronRight, BarChart2, ShieldAlert, Activity,
     TrendingUp, GitCommit, Sliders, History, FileText, ChevronLeft,
-    Play, AlertOctagon, Scale, Users
+    Play, AlertOctagon, Scale, Users, Zap, Check
 } from 'lucide-react';
 import { 
-    ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, 
-    LineChart, Line, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
+    ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis, CartesianGrid, Tooltip 
 } from 'recharts';
+import { VisualObject } from './VisualObject';
 
 // --- MOCK DATA ---
 
-const DECISIONS = [
-    { id: 'DEC-902', type: 'Optimization', target: 'Cooling Loop A', action: 'Increase Flow +15%', conf: 92, status: 'pending', time: '10:42:05', risk: 'Low', model: 'v4.2.1' },
-    { id: 'DEC-903', type: 'Safety', target: 'Pressure Valve 4', action: 'Emergency Release', conf: 99, status: 'approved', time: '10:38:12', risk: 'High', model: 'v4.1.0-safe' },
-    { id: 'DEC-904', type: 'Routing', target: 'Logic Node 7', action: 'Bypass Sector 4', conf: 45, status: 'flagged', time: '10:15:00', risk: 'Medium', model: 'v4.2.1' },
-    { id: 'DEC-905', type: 'Maintenance', target: 'Servo Arm B', action: 'Schedule Service', conf: 88, status: 'rejected', time: '09:50:22', risk: 'Low', model: 'v4.2.1' },
-    { id: 'DEC-906', type: 'Quality', target: 'Optical Inspect', action: 'Flag Defect', conf: 96, status: 'approved', time: '09:45:10', risk: 'Low', model: 'v3.9.5' },
+const INITIAL_DECISIONS = [
+    { id: 'DEC-902', type: 'Optimization', target: 'Cooling Loop A', category: 'Machine', variant: 'chamber', action: 'Increase Flow +15%', conf: 92, status: 'pending', time: '10:42:05', risk: 'Low', model: 'v4.2.1' },
+    { id: 'DEC-903', type: 'Safety', target: 'Pressure Valve 4', category: 'Sensor', variant: 'thermal', action: 'Emergency Release', conf: 99, status: 'approved', time: '10:38:12', risk: 'High', model: 'v4.1.0-safe' },
+    { id: 'DEC-904', type: 'Routing', target: 'Logic Node 7', category: 'Process', variant: 'inspection', action: 'Bypass Sector 4', conf: 45, status: 'flagged', time: '10:15:00', risk: 'Medium', model: 'v4.2.1' },
+    { id: 'DEC-905', type: 'Maintenance', target: 'Servo Arm B', category: 'Machine', variant: 'robot', action: 'Schedule Service', conf: 88, status: 'rejected', time: '09:50:22', risk: 'Low', model: 'v4.2.1' },
+    { id: 'DEC-906', type: 'Quality', target: 'Optical Inspect', category: 'Process', variant: 'inspection', action: 'Flag Defect', conf: 96, status: 'approved', time: '09:45:10', risk: 'Low', model: 'v3.9.5' },
 ];
 
 const FEATURE_IMPORTANCE = [
-    { feature: 'Temp Variance', score: 85, baseline: 60 },
-    { feature: 'Vibration', score: 65, baseline: 20 },
-    { feature: 'Hist. Failures', score: 45, baseline: 40 },
-    { feature: 'Power Draw', score: 30, baseline: 35 },
-    { feature: 'Throughput', score: 20, baseline: 25 },
+    { feature: 'Temp Variance', score: 85, color: 'from-orange-500 to-red-500', icon: <Zap className="w-3 h-3" /> },
+    { feature: 'Vibration', score: 65, color: 'from-blue-500 to-cyan-500', icon: <Activity className="w-3 h-3" /> },
+    { feature: 'Hist. Failures', score: 45, color: 'from-purple-500 to-pink-500', icon: <History className="w-3 h-3" /> },
+    { feature: 'Power Draw', score: 30, color: 'from-yellow-500 to-orange-500', icon: <Zap className="w-3 h-3" /> },
+    { feature: 'Throughput', score: 20, color: 'from-emerald-500 to-green-500', icon: <BarChart2 className="w-3 h-3" /> },
 ];
 
 const DRIFT_DATA = Array.from({ length: 30 }, (_, i) => ({
@@ -44,14 +45,20 @@ const AUDIT_LOGS = [
 export const AIOversightView: React.FC = () => {
     const [view, setView] = useState<'feed' | 'detail' | 'drift' | 'governance' | 'simulator'>('feed');
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [decisions, setDecisions] = useState(INITIAL_DECISIONS);
     const [simParams, setSimParams] = useState({ temp: 140, pressure: 50, vibration: 0.1 });
 
-    const selectedDecision = DECISIONS.find(d => d.id === selectedId) || DECISIONS[0];
+    const selectedDecision = decisions.find(d => d.id === selectedId) || decisions[0];
 
     // Helper to navigate
     const openDetail = (id: string) => {
         setSelectedId(id);
         setView('detail');
+    };
+
+    const handleAction = (id: string, newStatus: string) => {
+        setDecisions(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
+        // We stay on the detail view to show the result
     };
 
     return (
@@ -92,16 +99,16 @@ export const AIOversightView: React.FC = () => {
                 {view === 'feed' && (
                     <div className="flex h-full">
                         <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-4">
-                            {DECISIONS.map(dec => (
+                            {decisions.map(dec => (
                                 <div 
                                     key={dec.id}
                                     onClick={() => openDetail(dec.id)}
                                     className="bg-quantum-900 border border-quantum-700 hover:border-purple-500/50 p-4 rounded-lg cursor-pointer group transition-all relative overflow-hidden"
                                 >
                                     <div className="flex justify-between items-start mb-2 relative z-10">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`p-2 rounded bg-quantum-950 border border-quantum-800 ${dec.conf < 80 ? 'text-orange-400' : 'text-purple-400'}`}>
-                                                <BrainCircuit className="w-5 h-5" />
+                                        <div className="flex items-center space-x-4">
+                                            <div className="p-2.5 bg-quantum-950 rounded border border-quantum-800 text-purple-400">
+                                                <VisualObject category={dec.category as any} variant={dec.variant} size={24} />
                                             </div>
                                             <div>
                                                 <div className="text-sm font-bold text-slate-200 group-hover:text-purple-300 transition-colors">{dec.action}</div>
@@ -171,13 +178,14 @@ export const AIOversightView: React.FC = () => {
                             <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center">
                                 <FileText className="w-4 h-4 mr-2 text-cyan-400" /> Decision Context
                             </h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold">Target Node</div>
-                                    <div className="text-sm text-slate-200 font-mono bg-quantum-950 px-2 py-1 rounded border border-quantum-800 mt-1">
-                                        {selectedDecision.target}
-                                    </div>
+                            <div className="flex flex-col items-center mb-6 p-4 bg-quantum-950 border border-quantum-800 rounded-lg">
+                                <div className="text-cyan-400 mb-2">
+                                    <VisualObject category={selectedDecision.category as any} variant={selectedDecision.variant} size={64} />
                                 </div>
+                                <div className="text-sm font-bold text-slate-200">{selectedDecision.target}</div>
+                                <div className="text-xs text-slate-500 font-mono uppercase">{selectedDecision.category}</div>
+                            </div>
+                            <div className="space-y-4">
                                 <div>
                                     <div className="text-[10px] text-slate-500 uppercase font-bold">Model Version</div>
                                     <div className="text-sm text-slate-200 font-mono bg-quantum-950 px-2 py-1 rounded border border-quantum-800 mt-1">
@@ -201,25 +209,52 @@ export const AIOversightView: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Column 2: Reasoning */}
+                        {/* Column 2: Reasoning (ENHANCED GRAPH) */}
                         <div className="flex-1 bg-quantum-900 border border-quantum-700 rounded-lg p-5 flex flex-col">
-                            <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center">
-                                <BrainCircuit className="w-4 h-4 mr-2 text-purple-400" /> Feature Importance
+                            <h3 className="text-sm font-bold text-slate-200 mb-6 flex items-center">
+                                <BrainCircuit className="w-4 h-4 mr-2 text-purple-400" /> Feature Weighted Analysis
                             </h3>
-                            <div className="flex-1 w-full min-h-0">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={FEATURE_IMPORTANCE} layout="vertical" margin={{ left: 40, right: 20 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#1c2633" horizontal={false} />
-                                        <XAxis type="number" hide />
-                                        <YAxis dataKey="feature" type="category" width={100} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                                        <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{ backgroundColor: '#0a0f16', borderColor: '#2b3a4a', color: '#e2e8f0', fontSize: '12px' }} />
-                                        <Bar dataKey="score" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} name="Impact" />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            
+                            <div className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                                {FEATURE_IMPORTANCE.map((item, index) => (
+                                    <div key={index} className="group">
+                                        <div className="flex justify-between items-end mb-1">
+                                            <div className="flex items-center text-slate-300 text-xs font-bold">
+                                                <span className="p-1 bg-quantum-800 rounded mr-2 text-slate-400">{item.icon}</span>
+                                                {item.feature}
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <span className="text-[10px] text-slate-500">Contribution</span>
+                                                <span className="text-sm font-mono font-bold text-slate-100">{item.score}%</span>
+                                            </div>
+                                        </div>
+                                        <div className="h-3 w-full bg-quantum-950 rounded-full overflow-hidden relative border border-quantum-800">
+                                            {/* Background Tick Marks for industrial feel */}
+                                            <div className="absolute inset-0 w-full h-full flex justify-between px-1">
+                                                {[...Array(10)].map((_, i) => (
+                                                    <div key={i} className="w-px h-full bg-quantum-900/50"></div>
+                                                ))}
+                                            </div>
+                                            {/* Animated Gradient Bar */}
+                                            <div 
+                                                className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-1000 ease-out relative group-hover:brightness-110`}
+                                                style={{ width: `${item.score}%` }}
+                                            >
+                                                <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50 blur-[2px]"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="mt-4 p-3 bg-purple-900/10 border border-purple-500/20 rounded text-xs text-purple-200 leading-relaxed">
-                                <strong className="text-purple-400 block mb-1">Logic Path:</strong>
-                                IF <span className="font-mono">Temp_Variance > 0.5</span> AND <span className="font-mono">Vibration_Trend == Rising</span> THEN <span className="font-mono">Optimization_Action</span> PREDICTED WITH 92% CONFIDENCE.
+
+                            <div className="mt-6 p-4 bg-purple-900/10 border border-purple-500/20 rounded-lg text-xs text-purple-200 leading-relaxed shadow-inner">
+                                <div className="flex items-start">
+                                    <Activity className="w-4 h-4 mr-2 text-purple-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <strong className="text-purple-400 block mb-1">Inference Path:</strong>
+                                        Detected <span className="font-mono text-orange-300">Temp_Variance > 0.5</span> combined with rising <span className="font-mono text-cyan-300">Vibration_Trend</span>. The model predicts a thermal runaway with <span className="font-bold text-white">92% Confidence</span>. Recommended action aligns with safety protocols.
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -227,15 +262,53 @@ export const AIOversightView: React.FC = () => {
                         <div className="w-1/4 flex flex-col gap-4">
                             <div className="bg-quantum-900 border border-quantum-700 rounded-lg p-5">
                                 <h3 className="text-sm font-bold text-slate-200 mb-4">Operator Actions</h3>
-                                <div className="space-y-2">
-                                    <button className="w-full py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded shadow-lg flex items-center justify-center transition-colors">
-                                        <CheckCircle className="w-3 h-3 mr-2" /> Approve
+                                <div className="space-y-3">
+                                    {/* Approve Button */}
+                                    <button 
+                                        onClick={() => handleAction(selectedDecision.id, 'approved')}
+                                        disabled={selectedDecision.status !== 'pending'}
+                                        className={`w-full py-3 text-xs font-bold rounded shadow-lg flex items-center justify-center transition-all transform active:scale-95 ${
+                                            selectedDecision.status === 'approved' 
+                                            ? 'bg-green-600/20 border border-green-500/50 text-green-400 cursor-default' 
+                                            : selectedDecision.status === 'pending'
+                                            ? 'bg-green-600 hover:bg-green-500 text-white'
+                                            : 'bg-quantum-950 border border-quantum-800 text-slate-600 cursor-not-allowed opacity-50'
+                                        }`}
+                                    >
+                                        {selectedDecision.status === 'approved' ? <Check className="w-4 h-4 mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                                        {selectedDecision.status === 'approved' ? 'Action Approved' : 'Approve Action'}
                                     </button>
-                                    <button className="w-full py-2 bg-red-900/20 hover:bg-red-900/30 border border-red-500/30 text-red-400 text-xs font-bold rounded flex items-center justify-center transition-colors">
-                                        <XCircle className="w-3 h-3 mr-2" /> Override
+
+                                    {/* Override Button */}
+                                    <button 
+                                        onClick={() => handleAction(selectedDecision.id, 'rejected')}
+                                        disabled={selectedDecision.status !== 'pending'}
+                                        className={`w-full py-3 border rounded flex items-center justify-center transition-all text-xs font-bold ${
+                                            selectedDecision.status === 'rejected' 
+                                            ? 'bg-red-900/20 border-red-500/50 text-red-400 cursor-default' 
+                                            : selectedDecision.status === 'pending'
+                                            ? 'bg-red-900/10 hover:bg-red-900/30 border-red-500/30 text-red-400 hover:text-red-300'
+                                            : 'bg-quantum-950 border border-quantum-800 text-slate-600 cursor-not-allowed opacity-50'
+                                        }`}
+                                    >
+                                        <XCircle className="w-4 h-4 mr-2" /> 
+                                        {selectedDecision.status === 'rejected' ? 'Action Overridden' : 'Override / Reject'}
                                     </button>
-                                    <button className="w-full py-2 bg-quantum-800 hover:bg-quantum-700 border border-quantum-600 text-slate-300 text-xs font-bold rounded flex items-center justify-center transition-colors">
-                                        <Flag className="w-3 h-3 mr-2 text-orange-400" /> Flag as Drift
+
+                                    {/* Flag Button */}
+                                    <button 
+                                        onClick={() => handleAction(selectedDecision.id, 'flagged')}
+                                        disabled={selectedDecision.status !== 'pending'}
+                                        className={`w-full py-3 border rounded flex items-center justify-center transition-all text-xs font-bold ${
+                                            selectedDecision.status === 'flagged' 
+                                            ? 'bg-orange-900/20 border-orange-500/50 text-orange-400 cursor-default' 
+                                            : selectedDecision.status === 'pending'
+                                            ? 'bg-quantum-800 hover:bg-quantum-700 border-quantum-600 text-slate-300 hover:text-orange-400'
+                                            : 'bg-quantum-950 border border-quantum-800 text-slate-600 cursor-not-allowed opacity-50'
+                                        }`}
+                                    >
+                                        <Flag className="w-4 h-4 mr-2" /> 
+                                        {selectedDecision.status === 'flagged' ? 'Flagged as Drift' : 'Flag as Drift'}
                                     </button>
                                 </div>
                             </div>
@@ -244,12 +317,12 @@ export const AIOversightView: React.FC = () => {
                                 <h3 className="text-sm font-bold text-slate-200 mb-4">Similar Cases</h3>
                                 <div className="space-y-2">
                                     {[1,2,3].map(i => (
-                                        <div key={i} className="text-xs text-slate-400 border-b border-quantum-800 pb-2 mb-2 last:border-0">
+                                        <div key={i} className="text-xs text-slate-400 border-b border-quantum-800 pb-2 mb-2 last:border-0 hover:bg-quantum-800/30 p-2 -mx-2 rounded transition-colors cursor-pointer">
                                             <div className="flex justify-between">
-                                                <span>DEC-8{90+i}</span>
-                                                <span className="text-green-400">Success</span>
+                                                <span className="font-mono text-cyan-500">DEC-8{90+i}</span>
+                                                <span className="text-green-400 bg-green-900/20 px-1 rounded text-[9px]">SUCCESS</span>
                                             </div>
-                                            <div className="text-[10px] text-slate-600 mt-0.5">Similiarity: {98-i*5}%</div>
+                                            <div className="text-[10px] text-slate-600 mt-1">Similiarity: {98-i*5}% • 2 days ago</div>
                                         </div>
                                     ))}
                                 </div>
