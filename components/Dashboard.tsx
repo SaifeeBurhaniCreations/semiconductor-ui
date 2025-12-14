@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 import { SystemMetrics } from '../types';
-import { Activity, Cpu, Zap, Box, Server } from 'lucide-react';
+import { Activity, Cpu, Zap, Box, Server, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface DashboardProps {
   metrics: SystemMetrics;
@@ -30,6 +30,16 @@ const formatMetric = (num: number, suffix: string = ''): string => {
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ metrics, history }) => {
+  const [interventionState, setInterventionState] = useState<'pending' | 'processing' | 'approved'>('pending');
+
+  const handleInterventionClick = () => {
+      if (interventionState !== 'pending') return;
+      setInterventionState('processing');
+      setTimeout(() => {
+          setInterventionState('approved');
+      }, 1500);
+  };
+
   return (
     <div className="h-full w-full overflow-y-auto pr-2 pb-10 custom-scrollbar">
       
@@ -181,15 +191,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ metrics, history }) => {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-          <div className="p-4 rounded-lg bg-quantum-800/50 border border-quantum-600 border-dashed flex items-center justify-between text-slate-400 text-sm font-mono group hover:border-cyan-500/30 transition-colors cursor-pointer">
-              <span className="flex items-center">
-                <span className="w-2 h-2 bg-quantum-warn rounded-full animate-pulse mr-3"></span>
-                SYSTEM ANALYSIS: OPTIMIZATION REQUIRED IN SECTOR 7G
-              </span>
-              <span className="text-xs text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                [CLICK TO APPROVE AI INTERVENTION]
-              </span>
-          </div>
+          <button 
+            onClick={handleInterventionClick}
+            disabled={interventionState === 'approved'}
+            className={`p-4 rounded-lg border border-dashed flex items-center justify-between text-sm font-mono transition-all group relative overflow-hidden ${
+                interventionState === 'approved' 
+                ? 'bg-green-900/10 border-green-500/30 cursor-default' 
+                : 'bg-quantum-800/50 border-quantum-600 hover:border-cyan-500/30 cursor-pointer'
+            }`}
+          >
+              <div className="flex items-center z-10">
+                {interventionState === 'approved' ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-3" />
+                ) : interventionState === 'processing' ? (
+                    <Loader2 className="w-5 h-5 text-cyan-400 mr-3 animate-spin" />
+                ) : (
+                    <span className="w-2 h-2 bg-quantum-warn rounded-full animate-pulse mr-3"></span>
+                )}
+                <span className={interventionState === 'approved' ? 'text-green-400' : 'text-slate-400'}>
+                    {interventionState === 'approved' 
+                     ? 'SYSTEM ANALYSIS: OPTIMIZATION DEPLOYED TO SECTOR 7G' 
+                     : 'SYSTEM ANALYSIS: OPTIMIZATION REQUIRED IN SECTOR 7G'}
+                </span>
+              </div>
+              
+              {interventionState === 'pending' && (
+                  <span className="text-xs text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity z-10 font-bold uppercase tracking-wider">
+                    [ CLICK TO APPROVE AI INTERVENTION ]
+                  </span>
+              )}
+              {interventionState === 'processing' && (
+                  <span className="text-xs text-cyan-400 z-10 font-bold uppercase tracking-wider animate-pulse">
+                    [ DEPLOYING... ]
+                  </span>
+              )}
+              
+              {/* Active Background Animation */}
+              {interventionState === 'processing' && (
+                  <div className="absolute inset-0 bg-cyan-500/5 animate-[pulse_1s_ease-in-out_infinite]"></div>
+              )}
+          </button>
       </div>
     </div>
   );

@@ -198,7 +198,8 @@ const App: React.FC = () => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [criticalErrorOpen, setCriticalErrorOpen] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
-
+  const [autoArrangeTrigger, setAutoArrangeTrigger] = useState(0); // State for auto-arrange
+  
   // Handshake State
   const [modulesStatus, setModulesStatus] = useState<SystemModulesState>({
     quantumCore: "pending",
@@ -348,6 +349,11 @@ const App: React.FC = () => {
       document.documentElement.style.filter = "";
       addLog("High Contrast Mode DISABLED", "INFO", "UI");
     }
+  };
+
+  const handleAutoArrange = () => {
+      setAutoArrangeTrigger(prev => prev + 1);
+      addLog('Auto-arrange sequence initiated.', 'INFO', 'UI');
   };
 
   // Simulate System Activity
@@ -649,7 +655,8 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 min-h-0 relative z-10 bg-quantum-950/50">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10 bg-quantum-950/50 h-full overflow-hidden">
+        
         {/* Initialization Banner */}
         {Object.values(modulesStatus).some((s) => s !== "success") && (
           <div className="h-8 bg-quantum-900 border-b border-quantum-600 flex items-center justify-between px-4 shrink-0">
@@ -680,96 +687,76 @@ const App: React.FC = () => {
         </div>
 
         {/* Dynamic Viewport */}
-        <div className="flex-1 flex overflow-auto p-4 gap-4 min-h-0">
-          {/* Center/Main Stage */}
-          <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-lg overflow-hidden relative">
-            {/* View Content */}
-            {activeTab === "dashboard" && (
-              <Dashboard metrics={metrics} history={history} />
-            )}
+        <div className="flex-1 flex overflow-hidden p-4 gap-4">
+            
+            {/* Center/Main Stage */}
+            <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-lg overflow-hidden relative">
+                
+                {/* View Content */}
+                {activeTab === 'dashboard' && <Dashboard metrics={metrics} history={history} />}
+                
+                {activeTab === 'logic' && (
+                    <div className="flex-1 flex flex-col h-full">
+                        <div className="flex justify-between items-center mb-4 shrink-0">
+                             <div className="flex items-center space-x-2">
+                                <Network className="w-5 h-5 text-cyan-400" />
+                                <h2 className="text-lg font-bold text-slate-200">Logic Topology</h2>
+                             </div>
+                             <div className="flex space-x-2">
+                                <button 
+                                    onClick={() => setBuilderMode(!builderMode)}
+                                    className={`px-3 py-1 text-xs font-mono rounded border transition-colors flex items-center ${builderMode ? 'bg-cyan-900/50 border-cyan-500 text-cyan-300' : 'bg-quantum-800 border-quantum-600 text-slate-400 hover:text-slate-200'}`}
+                                >
+                                    {builderMode ? <Hammer className="w-3 h-3 mr-2" /> : <Monitor className="w-3 h-3 mr-2" />}
+                                    {builderMode ? 'BUILDER MODE' : 'VIEWER MODE'}
+                                </button>
+                                <button 
+                                    onClick={handleAutoArrange}
+                                    className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors"
+                                >
+                                    AUTO-ARRANGE
+                                </button>
+                             </div>
+                        </div>
+                        <div className="flex-1 flex relative overflow-hidden">
+                            {builderMode && <BuilderPalette />}
+                            <div className="flex-1 relative">
+                                <LogicGraph 
+                                    nodes={INITIAL_NODES} 
+                                    onNodeSelect={handleNodeSelect}
+                                    selectedNodeId={selectedNodeId}
+                                    builderMode={builderMode}
+                                    layoutTrigger={autoArrangeTrigger}
+                                />
+                            </div>
+                        </div>
+                        {/* Global Job Queue Panel - Pinned to bottom of Logic View */}
+                        <JobQueue />
+                    </div>
+                )}
+                
+                {activeTab === 'lineage' && (
+                    modulesStatus.document === 'success' && modulesStatus.quantumCore === 'success' 
+                    ? <LineageView modulesStatus={modulesStatus} /> 
+                    : <ModulePlaceholder label="Lineage" status={modulesStatus.document === 'loading' || modulesStatus.quantumCore === 'loading' ? 'loading' : 'pending'} />
+                )}
 
-            {activeTab === "logic" && (
-              <div className="flex-1 flex flex-col h-full">
-                <div className="flex justify-between items-center mb-4 shrink-0">
-                  <div className="flex items-center space-x-2">
-                    <Network className="w-5 h-5 text-cyan-400" />
-                    <h2 className="text-lg font-bold text-slate-200">
-                      Logic Topology
-                    </h2>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setBuilderMode(!builderMode)}
-                      className={`px-3 py-1 text-xs font-mono rounded border transition-colors flex items-center ${
-                        builderMode
-                          ? "bg-cyan-900/50 border-cyan-500 text-cyan-300"
-                          : "bg-quantum-800 border-quantum-600 text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      {builderMode ? (
-                        <Hammer className="w-3 h-3 mr-2" />
-                      ) : (
-                        <Monitor className="w-3 h-3 mr-2" />
-                      )}
-                      {builderMode ? "BUILDER MODE" : "VIEWER MODE"}
-                    </button>
-                    <button className="px-3 py-1 bg-quantum-800 hover:bg-quantum-700 text-xs font-mono rounded text-slate-300 border border-quantum-600 transition-colors">
-                      AUTO-ARRANGE
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 flex relative overflow-hidden">
-                  {builderMode && <BuilderPalette />}
-                  <div className="flex-1 relative">
-                    <LogicGraph
-                      nodes={INITIAL_NODES}
-                      onNodeSelect={handleNodeSelect}
-                      selectedNodeId={selectedNodeId}
-                      builderMode={builderMode}
-                    />
-                  </div>
-                </div>
-                {/* Global Job Queue Panel - Pinned to bottom of Logic View */}
-                <JobQueue />
-              </div>
-            )}
+                {activeTab === 'sim' && (
+                    modulesStatus.simulation === 'success' 
+                    ? <SimulationView /> 
+                    : <ModulePlaceholder label="Simulation" status={modulesStatus.simulation} />
+                )}
 
-            {activeTab === "lineage" &&
-              (modulesStatus.document === "success" &&
-              modulesStatus.quantumCore === "success" ? (
-                <LineageView modulesStatus={modulesStatus} />
-              ) : (
-                <ModulePlaceholder
-                  label="Lineage"
-                  status={
-                    modulesStatus.document === "loading" ||
-                    modulesStatus.quantumCore === "loading"
-                      ? "loading"
-                      : "pending"
-                  }
-                />
-              ))}
-
-            {activeTab === "sim" &&
-              (modulesStatus.simulation === "success" ? (
-                <SimulationView />
-              ) : (
-                <ModulePlaceholder
-                  label="Simulation"
-                  status={modulesStatus.simulation}
-                />
-              ))}
-
-            {activeTab === "analytics" && <AnalyticsView />}
-            {activeTab === "resources" && <ResourceView />}
-            {activeTab === "oversight" && <AIOversightView />}
-            {activeTab === "vision" && <LiveFeedView />}
-            {activeTab === "security" && <SecurityView />}
-            {activeTab === "billing" && <BillingView />}
-            {activeTab === "support" && <SupportView />}
-            {activeTab === "admin" && <AdminView />}
-            {activeTab === "manufacturing" && <ManufacturingView />}
-            {activeTab === "integrations" && <IntegrationsView />}
+                {activeTab === 'analytics' && <AnalyticsView />}
+                {activeTab === 'resources' && <ResourceView />}
+                {activeTab === 'oversight' && <AIOversightView />}
+                {activeTab === 'vision' && <LiveFeedView />}
+                {activeTab === 'security' && <SecurityView />}
+                {activeTab === 'billing' && <BillingView />}
+                {activeTab === 'support' && <SupportView />}
+                {activeTab === 'admin' && <AdminView />}
+                {activeTab === 'manufacturing' && <ManufacturingView />}
+                {activeTab === 'integrations' && <IntegrationsView />}
 
             {activeTab === "docs" &&
               (modulesStatus.document === "success" ? (

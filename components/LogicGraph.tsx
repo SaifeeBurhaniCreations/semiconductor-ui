@@ -9,9 +9,10 @@ interface LogicGraphProps {
   onNodeSelect?: (nodeId: string) => void;
   selectedNodeId?: string | null;
   builderMode?: boolean; // New Prop
+  layoutTrigger?: number; // Prop to trigger re-layout
 }
 
-export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, selectedNodeId, builderMode }) => {
+export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, selectedNodeId, builderMode, layoutTrigger = 0 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   
@@ -23,6 +24,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
   // D3 Selection Refs
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined> | null>(null);
 
   useEffect(() => {
     if (!svgRef.current || !wrapperRef.current || nodes.length === 0) return;
@@ -66,6 +68,8 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
       .force("charge", d3.forceManyBody().strength(-500))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide().radius(70));
+    
+    simulationRef.current = simulation;
 
     // Arrowhead
     const defs = svg.append("defs");
@@ -192,6 +196,13 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
     }
 
   }, [nodes, selectedNodeId, heatmapMode, builderMode]); // Re-render when props change
+
+  // Handle layout trigger
+  useEffect(() => {
+      if (simulationRef.current) {
+          simulationRef.current.alpha(1).restart();
+      }
+  }, [layoutTrigger]);
 
   // Zoom Controls
   const handleZoom = (factor: number) => {

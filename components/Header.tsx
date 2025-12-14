@@ -69,34 +69,26 @@ export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
   ];
 
   return (
-<header className="h-16 sticky top-0 flex items-center justify-between px-6 bg-quantum-900/90 backdrop-blur-md border-b border-quantum-600 z-50">
-      <div className="flex items-center space-x-4">
-        <span className="text-xs font-mono text-slate-500 hidden md:inline-block">
-          SYSTEM_ID: <span className="text-slate-300">Q-OS-742</span>
-        </span>
-        <span className="h-4 w-px bg-quantum-600 hidden md:inline-block"></span>
-        <div className="flex items-center space-x-2 px-2 py-1 bg-quantum-800/50 rounded border border-quantum-700">
-          <div className="w-1.5 h-1.5 rounded-full bg-quantum-success animate-pulse"></div>
-          <span className="text-xs font-mono text-slate-300">
-            SYSTEM NOMINAL
-          </span>
+    <header className="h-16 flex items-center justify-between px-6 bg-quantum-900/90 backdrop-blur-md border-b border-quantum-600 z-40 shrink-0 sticky top-0">
+        <div className="flex items-center space-x-4">
+            <span className="text-xs font-mono text-slate-500 hidden md:inline-block">SYSTEM_ID: <span className="text-slate-300">Q-OS-742</span></span>
+            <span className="h-4 w-px bg-quantum-600 hidden md:inline-block"></span>
+            <div className="flex items-center space-x-2 px-2 py-1 bg-quantum-800/50 rounded border border-quantum-700">
+                <div className="w-1.5 h-1.5 rounded-full bg-quantum-success animate-pulse"></div>
+                <span className="text-xs font-mono text-slate-300">SYSTEM NOMINAL</span>
+            </div>
         </div>
-      </div>
-
-      <div className="flex items-center space-x-4">
-        {/* Notification Bell */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => setIsNotifOpen(!isNotifOpen)}
-            className={`p-2 transition-colors relative ${
-              isNotifOpen
-                ? "text-cyan-400"
-                : "text-slate-400 hover:text-cyan-400"
-            }`}
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-quantum-900"></span>
-          </button>
+        
+        <div className="flex items-center space-x-4">
+            {/* Notification Bell */}
+            <div className="relative" ref={notifRef}>
+                <button 
+                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                    className={`p-2 transition-colors relative ${isNotifOpen ? 'text-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}
+                >
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-quantum-900"></span>
+                </button>
 
           {/* Notifications Dropdown */}
           {isNotifOpen && (

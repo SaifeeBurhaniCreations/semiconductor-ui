@@ -1,12 +1,44 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Play, Pause, X, GripVertical, Clock, Cpu, AlertCircle, Activity, Layers, CalendarPlus } from 'lucide-react';
 
-export const JobQueue: React.FC = () => {
-  const jobs = [
+const INITIAL_JOBS = [
     { id: 'JOB-9021', name: 'Simulation: Thermal Stress', priority: 'HIGH', status: 'RUNNING', progress: 45, owner: 'ENG-01', resource: 'Q-Core-A' },
     { id: 'JOB-9022', name: 'Analytics: Weekly Yield', priority: 'NORMAL', status: 'QUEUED', progress: 0, owner: 'SYS-AUTO', resource: 'Cloud-Hybrid' },
     { id: 'JOB-9024', name: 'Validation: Node 742', priority: 'LOW', status: 'QUEUED', progress: 0, owner: 'ENG-03', resource: 'Local' },
-  ];
+];
+
+export const JobQueue: React.FC = () => {
+  const [jobs, setJobs] = useState(INITIAL_JOBS);
+
+  const handleCancelAll = () => {
+      if (confirm("Are you sure you want to terminate all active and queued jobs?")) {
+          setJobs([]);
+      }
+  };
+
+  const handlePrioritize = () => {
+      // Sort by priority: HIGH > NORMAL > LOW
+      const priorityMap: Record<string, number> = { 'HIGH': 3, 'NORMAL': 2, 'LOW': 1 };
+      const sorted = [...jobs].sort((a, b) => priorityMap[b.priority] - priorityMap[a.priority]);
+      setJobs(sorted);
+  };
+
+  const handleRemoveJob = (id: string) => {
+      setJobs(jobs.filter(j => j.id !== id));
+  };
+
+  const handleAddJob = () => {
+      const newJob = { 
+          id: `JOB-${Math.floor(9025 + Math.random() * 1000)}`, 
+          name: 'Manual Task: Diagnostics', 
+          priority: 'NORMAL', 
+          status: 'QUEUED', 
+          progress: 0, 
+          owner: 'OP-01', 
+          resource: 'Q-Core-B' 
+      };
+      setJobs([...jobs, newJob]);
+  };
 
   const isEmpty = jobs.length === 0;
 
@@ -19,8 +51,18 @@ export const JobQueue: React.FC = () => {
             {!isEmpty && <span className="text-[10px] bg-quantum-950 px-1.5 py-0.5 rounded text-slate-400 border border-quantum-700">{jobs.length} Active</span>}
         </div>
         <div className="flex space-x-2">
-            <button className="text-[10px] px-2 py-1 bg-quantum-700 hover:bg-quantum-600 rounded text-slate-300 border border-quantum-600">Cancel All</button>
-            <button className="text-[10px] px-2 py-1 bg-quantum-700 hover:bg-quantum-600 rounded text-slate-300 border border-quantum-600">Prioritize</button>
+            <button 
+                onClick={handleCancelAll}
+                className="text-[10px] px-2 py-1 bg-quantum-700 hover:bg-quantum-600 rounded text-slate-300 border border-quantum-600 transition-colors"
+            >
+                Cancel All
+            </button>
+            <button 
+                onClick={handlePrioritize}
+                className="text-[10px] px-2 py-1 bg-quantum-700 hover:bg-quantum-600 rounded text-slate-300 border border-quantum-600 transition-colors"
+            >
+                Prioritize
+            </button>
         </div>
       </div>
       
@@ -34,7 +76,10 @@ export const JobQueue: React.FC = () => {
                     <p className="text-sm font-medium text-slate-400">No Jobs Queued</p>
                     <p className="text-xs max-w-xs mt-1">The system is idle. Initialize a simulation or analytics task to populate the queue.</p>
                 </div>
-                <button className="flex items-center px-3 py-1.5 bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 border border-cyan-500/30 rounded text-xs transition-colors">
+                <button 
+                    onClick={handleAddJob}
+                    className="flex items-center px-3 py-1.5 bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 border border-cyan-500/30 rounded text-xs transition-colors"
+                >
                     <CalendarPlus className="w-3 h-3 mr-2" /> Schedule Job
                 </button>
             </div>
@@ -83,7 +128,12 @@ export const JobQueue: React.FC = () => {
                     <td className="px-4 py-2 text-right">
                         <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button className="p-1 hover:text-yellow-400 bg-quantum-950 border border-quantum-700 rounded"><Pause className="w-3 h-3" /></button>
-                            <button className="p-1 hover:text-red-400 bg-quantum-950 border border-quantum-700 rounded"><X className="w-3 h-3" /></button>
+                            <button 
+                                onClick={() => handleRemoveJob(job.id)}
+                                className="p-1 hover:text-red-400 bg-quantum-950 border border-quantum-700 rounded"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
                         </div>
                     </td>
                 </tr>
