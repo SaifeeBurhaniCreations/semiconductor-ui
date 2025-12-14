@@ -24,9 +24,9 @@ export const UserProfileView: React.FC = () => {
         <div className="h-full flex flex-col p-6 overflow-y-auto custom-scrollbar bg-quantum-950/50">
             
             {/* Header / Banner */}
-            <div className="relative h-48 rounded-xl bg-gradient-to-r from-cyan-900/40 to-purple-900/40 border border-quantum-600 overflow-hidden shrink-0 mb-16">
+            <div className="relative h-48 rounded-xl bg-gradient-to-r from-cyan-900/40 to-purple-900/40 border border-quantum-600 overflow-hidden shrink-0 mb-16 z-0">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-                <div className="absolute bottom-4 right-4 flex space-x-3">
+                <div className="absolute bottom-4 right-4 flex space-x-3 z-20">
                     {isEditing ? (
                         <>
                             <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-quantum-900/80 hover:bg-quantum-800 text-slate-300 text-xs font-bold rounded backdrop-blur border border-quantum-600">Cancel</button>
@@ -43,7 +43,7 @@ export const UserProfileView: React.FC = () => {
             </div>
 
             {/* Profile Content Container (overlapping banner) */}
-            <div className="max-w-5xl w-full mx-auto -mt-24 relative px-4 flex flex-col md:flex-row gap-8">
+            <div className="max-w-5xl w-full mx-auto -mt-24 relative px-4 flex flex-col md:flex-row gap-8 z-10">
                 
                 {/* Left Column: Avatar & Quick Stats */}
                 <div className="w-full md:w-80 flex flex-col gap-6">

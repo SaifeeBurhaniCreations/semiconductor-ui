@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
     Shield, Lock, Users, Key, FileCheck, AlertOctagon, 
-    CheckCircle2, XCircle, RefreshCw, Eye, UserPlus, X, Save, AlertTriangle, Loader2
+    CheckCircle2, XCircle, RefreshCw, Eye, UserPlus, X, Save, AlertTriangle, Loader2, ArrowRight
 } from 'lucide-react';
 
 interface UserData {
@@ -31,6 +31,12 @@ export const SecurityView: React.FC = () => {
   // Security Center State
   const [lockdownActive, setLockdownActive] = useState(false);
   const [lockdownProcessing, setLockdownProcessing] = useState(false);
+  const [showLockdownModal, setShowLockdownModal] = useState(false);
+  
+  // Master Key Logic (Mocked)
+  const [tempMasterKey, setTempMasterKey] = useState<string | null>(null);
+  const [keyInput, setKeyInput] = useState('');
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
 
   const audits = [
       { id: 'EVT-992', type: 'AUTH_FAIL', source: '192.168.1.42', time: '10:42:01', detail: 'Invalid Token' },
@@ -71,30 +77,44 @@ export const SecurityView: React.FC = () => {
       setIsUserModalOpen(false);
   };
 
-  const handleLockdown = () => {
-      if (lockdownProcessing) return;
-
+  const handleLockdownClick = () => {
+      // If lockdown is active, we just lift it for now (simplified for demo toggle)
+      // If inactive, open modal to verify master key
       if (lockdownActive) {
-          const confirm = window.confirm("Authenticate to lift System Lockdown?");
-          if (confirm) {
-              setLockdownProcessing(true);
-              // Simulate backend delay
-              setTimeout(() => {
-                  setLockdownActive(false);
-                  setLockdownProcessing(false);
-              }, 2000);
-          }
+          // In real app, lifting would also require auth. Simplified here.
+          setLockdownProcessing(true);
+          setTimeout(() => {
+              setLockdownActive(false);
+              setLockdownProcessing(false);
+          }, 2000);
       } else {
-          const confirm = window.confirm("WARNING: This will suspend all non-admin access and freeze logic nodes. Proceed?");
-          if (confirm) {
-              setLockdownProcessing(true);
-              // Simulate backend delay
-              setTimeout(() => {
-                  setLockdownActive(true);
-                  setLockdownProcessing(false);
-              }, 2000);
-          }
+          setKeyInput('');
+          setShowLockdownModal(true);
       }
+  };
+
+  const generateMasterKey = () => {
+      setIsGeneratingKey(true);
+      setTimeout(() => {
+          const key = `MK-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString().substring(8)}`;
+          setTempMasterKey(key);
+          setIsGeneratingKey(false);
+      }, 2000);
+  };
+
+  const confirmLockdown = () => {
+      if (keyInput !== tempMasterKey) {
+          alert("Invalid Master Key");
+          return;
+      }
+      setShowLockdownModal(false);
+      setLockdownProcessing(true);
+      
+      // TODO: Replace with real backend call to POST /api/security/lockdown
+      setTimeout(() => {
+          setLockdownActive(true);
+          setLockdownProcessing(false);
+      }, 1500);
   };
 
   return (
@@ -108,11 +128,75 @@ export const SecurityView: React.FC = () => {
                     <span>System Lockdown Active</span>
                 </div>
                 <button 
-                    onClick={handleLockdown} 
+                    onClick={handleLockdownClick} 
                     className="px-3 py-1 bg-white text-red-600 text-xs font-bold rounded hover:bg-slate-200 shadow-lg"
                 >
                     Authenticate to Lift
                 </button>
+            </div>
+        )}
+
+        {/* Lockdown Authentication Modal */}
+        {showLockdownModal && (
+            <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-quantum-950 border border-red-500/50 rounded-lg w-full max-w-md p-8 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-red-600 animate-pulse"></div>
+                    <div className="text-center mb-6">
+                        <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/30">
+                            <Lock className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-100 uppercase tracking-wide">Initiate Lockdown</h3>
+                        <p className="text-xs text-red-400 mt-2">Requires System Master Key Authorization</p>
+                    </div>
+
+                    {!tempMasterKey ? (
+                        <div className="space-y-4">
+                            <p className="text-xs text-slate-400 text-center mb-4 leading-relaxed">
+                                No active session key found. Please generate a temporary Master Key using multi-factor authentication simulation.
+                            </p>
+                            <button 
+                                onClick={generateMasterKey}
+                                disabled={isGeneratingKey}
+                                className="w-full py-3 bg-quantum-800 hover:bg-quantum-700 border border-quantum-600 text-slate-200 font-mono text-sm rounded flex items-center justify-center transition-all"
+                            >
+                                {isGeneratingKey ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Key className="w-4 h-4 mr-2" />}
+                                {isGeneratingKey ? "Verifying MFA..." : "Generate Master Key"}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 animate-in slide-in-from-bottom-2">
+                            <div className="bg-black/50 p-3 rounded border border-quantum-700 text-center">
+                                <div className="text-[10px] text-slate-500 uppercase mb-1">Your Session Key</div>
+                                <div className="text-lg font-mono font-bold text-cyan-400 tracking-widest select-all">{tempMasterKey}</div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Confirm Key to Lock</label>
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    className="w-full bg-quantum-900 border border-red-900/50 rounded p-3 text-slate-100 text-center font-mono tracking-widest focus:border-red-500 outline-none transition-colors"
+                                    placeholder="ENTER-KEY-HERE"
+                                    value={keyInput}
+                                    onChange={(e) => setKeyInput(e.target.value)}
+                                />
+                            </div>
+                            <button 
+                                onClick={confirmLockdown}
+                                disabled={keyInput !== tempMasterKey}
+                                className="w-full py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all flex items-center justify-center"
+                            >
+                                <AlertTriangle className="w-4 h-4 mr-2" /> EXECUTE LOCKDOWN
+                            </button>
+                        </div>
+                    )}
+
+                    <button 
+                        onClick={() => setShowLockdownModal(false)}
+                        className="absolute top-4 right-4 text-slate-600 hover:text-slate-400"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
         )}
 
@@ -297,7 +381,7 @@ export const SecurityView: React.FC = () => {
                         <div className={`p-4 border rounded-lg transition-all duration-300 ${lockdownActive ? 'bg-red-950 border-red-500' : 'bg-red-900/10 border-red-500/20'}`}>
                             <h4 className={`text-xs font-bold uppercase mb-2 ${lockdownActive ? 'text-white' : 'text-red-400'}`}>Emergency Protocols</h4>
                             <button 
-                                onClick={handleLockdown}
+                                onClick={handleLockdownClick}
                                 disabled={lockdownProcessing}
                                 className={`w-full py-2 text-xs font-bold rounded shadow-lg transition-all flex items-center justify-center ${
                                     lockdownActive 
@@ -306,13 +390,13 @@ export const SecurityView: React.FC = () => {
                                 }`}
                             >
                                 {lockdownProcessing ? (
-                                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> {lockdownActive ? 'LIFTING...' : 'LOCKING...'}</>
+                                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> {lockdownActive ? 'LIFTING...' : 'PROCESSING...'}</>
                                 ) : (
                                     <>{lockdownActive ? 'LIFT LOCKDOWN' : 'LOCKDOWN SYSTEM'}</>
                                 )}
                             </button>
                             <p className={`text-[10px] mt-2 text-center ${lockdownActive ? 'text-red-200' : 'text-red-300/60'}`}>
-                                {lockdownActive ? 'System is currently frozen. Auth required.' : 'Requires Admin Master Key'}
+                                {lockdownActive ? 'System is currently frozen. Auth required.' : 'Requires Master Key Authorization'}
                             </p>
                         </div>
                     </div>
