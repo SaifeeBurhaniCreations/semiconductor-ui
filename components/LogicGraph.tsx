@@ -3,26 +3,28 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { LogicNode, ModuleType } from '../types';
 import { NodeContextMenu } from './NodeContextMenu';
-import { ZoomIn, ZoomOut, Maximize, Layers, Search, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Layers, Search, X, BoxSelect } from 'lucide-react';
 
 interface LogicGraphProps {
   nodes: LogicNode[];
-  onNodeSelect?: (nodeId: string) => void;
+  onNodeSelect?: (nodeId: string, multi: boolean) => void;
   onEdgeSelect?: (edgeId: string) => void;
-  selectedNodeId?: string | null;
+  selectedNodeIds?: string[]; // Changed from single ID to array
   selectedEdgeId?: string | null;
   builderMode?: boolean; 
-  layoutTrigger?: number; 
+  layoutTrigger?: number;
+  onUngroup?: (nodeId: string) => void;
 }
 
 export const LogicGraph: React.FC<LogicGraphProps> = ({ 
     nodes, 
     onNodeSelect, 
     onEdgeSelect, 
-    selectedNodeId, 
+    selectedNodeIds = [], 
     selectedEdgeId,
     builderMode, 
-    layoutTrigger = 0 
+    layoutTrigger = 0,
+    onUngroup
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -68,8 +70,6 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
         node.connections.forEach(targetId => {
             const target = nodes.find(n => n.id === targetId);
             if (target) {
-                // Determine source/target order for consistent ID if undirected, but this is directed logic flow
-                // ID format: source-target
                 links.push({ 
                     source: node.id, 
                     target: target.id, 
@@ -116,7 +116,6 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
       .attr("fill", "#a855f7"); // Purple
 
     // Edges
-    // Need a group for lines to ensure they are behind nodes
     const linkGroup = g.append("g").attr("class", "links");
     
     const link = linkGroup
@@ -145,35 +144,52 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
         .on("end", dragended))
       .on("click", (event, d) => {
           event.stopPropagation();
-          if (onNodeSelect) onNodeSelect(d.id);
+          const isMulti = event.shiftKey;
+          if (onNodeSelect) onNodeSelect(d.id, isMulti);
           setContextMenu(null);
+      })
+      .on("dblclick", (event, d) => {
+          event.stopPropagation();
+          if (d.type === ModuleType.GROUP && onUngroup) {
+              onUngroup(d.id);
+          }
       })
       .on("contextmenu", (event, d) => {
           event.preventDefault();
           setContextMenu({ x: event.clientX, y: event.clientY, nodeId: d.id });
       });
 
-    // Node Shape (Hexagon)
+    // Node Shape (Hexagon for normal, Circle for Group)
     node.append("path")
-      .attr("d", "M0,-24 L20.78,-12 L20.78,12 L0,24 L-20.78,12 L-20.78,-12 Z") 
+      .attr("d", (d: LogicNode) => {
+          if (d.type === ModuleType.GROUP) {
+              // Draw a larger circle or box for group
+              return "M -30 -30 H 30 V 30 H -30 Z"; // Square for group
+          }
+          return "M0,-24 L20.78,-12 L20.78,12 L0,24 L-20.78,12 L-20.78,-12 Z"; // Hexagon
+      }) 
       .attr("fill", (d: LogicNode) => {
+          if (selectedNodeIds.includes(d.id)) return "#164e63"; // Selected Color
+          if (d.type === ModuleType.GROUP) return "#312e81"; // Indigo for group
           if (heatmapMode) {
               const heat = Math.random();
               if (heat > 0.8) return "#ef4444"; 
               if (heat > 0.5) return "#f97316"; 
               return "#0a0f16";
           }
-          return d.id === selectedNodeId ? "#164e63" : "#0a0f16";
+          return "#0a0f16";
       })
       .attr("stroke", (d: LogicNode) => {
-          if (d.id === selectedNodeId) return "#22d3ee";
+          if (selectedNodeIds.includes(d.id)) return "#22d3ee";
+          if (d.type === ModuleType.GROUP) return "#818cf8";
           return d.status === 'active' ? "#06b6d4" : d.status === 'error' ? "#ef4444" : "#2b3a4a";
       })
-      .attr("stroke-width", (d: LogicNode) => d.id === selectedNodeId ? 3 : 2)
+      .attr("stroke-width", (d: LogicNode) => selectedNodeIds.includes(d.id) ? 3 : 2)
+      .attr("stroke-dasharray", (d: LogicNode) => d.type === ModuleType.GROUP ? "5,2" : "none")
       .attr("class", "transition-colors duration-300 cursor-pointer");
 
     // Liveness Indicator (Center)
-    node.filter((d: LogicNode) => d.status === 'active')
+    node.filter((d: LogicNode) => d.status === 'active' && d.type !== ModuleType.GROUP)
       .append("circle")
       .attr("cx", 0)
       .attr("cy", 0)
@@ -181,8 +197,19 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
       .attr("fill", "rgba(34, 211, 238, 0.2)")
       .attr("class", "animate-ping");
 
+    // Group Badge
+    node.filter((d: LogicNode) => d.type === ModuleType.GROUP)
+      .append("text")
+      .text((d: LogicNode) => `(${d.groupChildren?.length || 0})`)
+      .attr("dy", 5)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#a5b4fc")
+      .attr("font-size", "10px")
+      .attr("font-family", "Fira Code");
+
     // Health Status Indicator (Small dot on rim)
-    node.append("circle")
+    node.filter((d: LogicNode) => d.type !== ModuleType.GROUP)
+      .append("circle")
       .attr("cx", 14)
       .attr("cy", -14)
       .attr("r", 4)
@@ -200,15 +227,16 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
     // Labels
     node.append("text")
       .text((d: LogicNode) => d.label)
-      .attr("dy", 38)
+      .attr("dy", (d: LogicNode) => d.type === ModuleType.GROUP ? 45 : 38)
       .attr("text-anchor", "middle")
-      .attr("fill", (d: LogicNode) => d.id === selectedNodeId ? "#e2e8f0" : "#94a3b8")
+      .attr("fill", (d: LogicNode) => selectedNodeIds.includes(d.id) ? "#e2e8f0" : "#94a3b8")
       .attr("font-family", "Fira Code")
       .attr("font-size", "10px")
       .style("pointer-events", "none");
 
-    // Icons
-    node.append("text")
+    // Icons for standard nodes
+    node.filter((d: LogicNode) => d.type !== ModuleType.GROUP)
+      .append("text")
       .text((d: LogicNode) => {
         if(d.type.includes('AI')) return 'AI';
         if(d.type.includes('SENSOR')) return 'IN';
@@ -217,7 +245,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
       })
       .attr("dy", 4)
       .attr("text-anchor", "middle")
-      .attr("fill", (d: LogicNode) => d.status === 'active' || d.id === selectedNodeId ? "#22d3ee" : "#475569")
+      .attr("fill", (d: LogicNode) => d.status === 'active' || selectedNodeIds.includes(d.id) ? "#22d3ee" : "#475569")
       .attr("font-family", "Inter")
       .attr("font-weight", "bold")
       .attr("font-size", "10px")
@@ -250,7 +278,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
       d.fy = null;
     }
 
-  }, [nodes, selectedNodeId, selectedEdgeId, heatmapMode, builderMode]); // Re-render when props change
+  }, [nodes, selectedNodeIds, selectedEdgeId, heatmapMode, builderMode]); 
 
   // Handle layout trigger
   useEffect(() => {
@@ -270,7 +298,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
       );
 
       if (targetNode && targetNode.x !== undefined && targetNode.y !== undefined) {
-          if (onNodeSelect) onNodeSelect(targetNode.id);
+          if (onNodeSelect) onNodeSelect(targetNode.id, false);
           
           const width = wrapperRef.current.clientWidth;
           const height = wrapperRef.current.clientHeight;
@@ -287,14 +315,12 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
       }
   };
 
-  // Zoom Controls
   const handleZoom = (factor: number) => {
       if (!svgRef.current || !zoomRef.current) return;
       d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, factor);
   };
   const handleFit = () => {
        if (!svgRef.current || !zoomRef.current || !wrapperRef.current) return;
-       // Simple reset for now
        d3.select(svgRef.current).transition().duration(750).call(zoomRef.current.transform, d3.zoomIdentity.translate(wrapperRef.current.clientWidth/2, wrapperRef.current.clientHeight/2));
   };
 
@@ -304,7 +330,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
         className="w-full h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden relative shadow-lg"
         onClick={() => {
             setContextMenu(null);
-            if(onNodeSelect) onNodeSelect(""); // Clear selection
+            if(onNodeSelect) onNodeSelect("", false); // Clear selection
             if(onEdgeSelect) onEdgeSelect(""); 
         }}
         onDragOver={(e) => e.preventDefault()}
@@ -312,7 +338,6 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
             e.preventDefault();
             const type = e.dataTransfer.getData('nodeType');
             if (type && builderMode) {
-                // In a real app, we'd add the node here.
                 alert(`Added new ${type} node at ${e.clientX}, ${e.clientY}`);
             }
         }}
@@ -353,9 +378,9 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({
                 <span className="text-xs font-mono uppercase tracking-widest text-slate-500 bg-quantum-950/80 px-2 py-1 border border-quantum-600 rounded backdrop-blur flex items-center">
                     Topology {builderMode ? '[BUILDER]' : '[VIEWER]'}
                 </span>
-                {heatmapMode && (
-                    <span className="text-xs font-mono uppercase tracking-widest text-orange-400 bg-orange-950/80 px-2 py-1 border border-orange-600/50 rounded backdrop-blur animate-pulse">
-                        HEATMAP ACTIVE
+                {selectedNodeIds.length > 1 && (
+                    <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 bg-cyan-950/80 px-2 py-1 border border-cyan-600/50 rounded backdrop-blur animate-in fade-in">
+                        {selectedNodeIds.length} Nodes Selected
                     </span>
                 )}
             </div>

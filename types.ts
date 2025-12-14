@@ -11,7 +11,8 @@ export enum ModuleType {
   LOGIC = 'LOGIC_NODE',
   SENSOR = 'SENSOR_INPUT',
   ACTUATOR = 'ACTUATOR_OUTPUT',
-  AI_CORE = 'AI_PROCESSING'
+  AI_CORE = 'AI_PROCESSING',
+  GROUP = 'GROUP_NODE' 
 }
 
 export type HandshakeState = 'pending' | 'loading' | 'success' | 'failure';
@@ -39,6 +40,8 @@ export interface LogicNode {
   x?: number; // For visualization
   y?: number; // For visualization
   connections: string[]; // IDs of connected nodes
+  groupChildren?: LogicNode[]; // For grouped nodes
+  internalEdges?: string[]; // Store edge info when grouped
 }
 
 // New interface for detailed node inspection
@@ -48,6 +51,11 @@ export interface NodeDetails {
     category: string;
     version: string;
     dependencies: number;
+  };
+  metadata: {
+    created: string;
+    lastModified: string;
+    owner: string;
   };
   state: {
     lastExecution: string;
@@ -89,4 +97,18 @@ export interface ChatMessage {
   role: 'user' | 'model' | 'system';
   content: string;
   timestamp: number;
+}
+
+// --- Production Object System Types ---
+
+export type ProductionObjectCategory = 'Product' | 'Process' | 'Machine' | 'Sensor' | 'AI_Action';
+
+export interface ProductionObjectDefinition {
+  id: string;
+  name: string;
+  category: ProductionObjectCategory;
+  variant: string; // e.g., 'wafer-300mm', 'bonder-hybrid'
+  specs: Record<string, string>;
+  rules: string[];
+  version: string;
 }

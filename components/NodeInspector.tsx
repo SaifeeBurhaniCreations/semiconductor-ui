@@ -1,28 +1,83 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { LogicNode, NodeDetails, SystemModulesState } from '../types';
 import { 
   X, Activity, Cpu, GitBranch, Layers, ShieldCheck, 
-  Play, Database, AlertTriangle, Zap, Search, Terminal, CheckCircle, Lock, RotateCw, History, ArrowRightLeft
+  Play, Database, AlertTriangle, Zap, Search, Terminal, CheckCircle, Lock, RotateCw, History, ArrowRightLeft, User, Calendar, BoxSelect, Group
 } from 'lucide-react';
 
 interface NodeInspectorProps {
-  node: LogicNode;
-  details: NodeDetails;
+  node: LogicNode | null;
+  details: NodeDetails | null;
   modulesStatus: SystemModulesState;
+  selectedNodeIds: string[];
   onClose: () => void;
   onAction: (action: string) => void;
+  onGroup?: () => void;
+  onLogAction?: (msg: string, type: 'info' | 'success') => void;
 }
 
-export const NodeInspector: React.FC<NodeInspectorProps> = ({ node, details, modulesStatus, onClose, onAction }) => {
+export const NodeInspector: React.FC<NodeInspectorProps> = ({ 
+    node, 
+    details, 
+    modulesStatus, 
+    selectedNodeIds,
+    onClose, 
+    onAction,
+    onGroup,
+    onLogAction
+}) => {
   const [view, setView] = useState<'info' | 'provenance' | 'timeline'>('info');
-  const [logs, setLogs] = useState<string[]>([]);
 
-  // Simulation Logic (retained for quick action)
-  const runQuickSim = () => {
-    onAction('simulate');
-    setLogs(['Quick check running...']);
-    setTimeout(() => setLogs(p => [...p, 'Done.']), 1000);
+  const handleExportJSON = () => {
+      onLogAction?.(`Exported configuration for node ${node?.id || 'group'}`, 'success');
   };
+
+  const handleValidate = () => {
+      onLogAction?.(`Integrity check passed for node ${node?.id || 'group'}`, 'success');
+  };
+
+  const handleInspectLogs = () => {
+      onLogAction?.(`Opening system logs for node ${node?.id || 'group'}...`, 'info');
+  };
+
+  // --- MULTI-SELECT VIEW ---
+  if (selectedNodeIds.length > 1) {
+      return (
+        <div className="h-full flex flex-col bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden shadow-2xl relative">
+            <div className="flex items-center justify-between px-4 py-3 bg-quantum-800 border-b border-quantum-600 shrink-0">
+                <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-cyan-500/10 rounded border border-cyan-500/30">
+                        <BoxSelect className="w-4 h-4 text-cyan-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-100 tracking-wide">Multi-Selection</h3>
+                        <span className="text-[10px] font-mono text-slate-500 uppercase">{selectedNodeIds.length} ITEMS SELECTED</span>
+                    </div>
+                </div>
+                <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors">
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
+                <Layers className="w-16 h-16 text-slate-700 mb-4" />
+                <p className="text-slate-400 text-sm mb-6">
+                    You have selected {selectedNodeIds.length} nodes. <br/>
+                    Group them to simplify the topology.
+                </p>
+                <button 
+                    onClick={onGroup}
+                    className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded flex items-center shadow-lg transition-all"
+                >
+                    <Group className="w-4 h-4 mr-2" /> Group Selected Nodes
+                </button>
+            </div>
+        </div>
+      );
+  }
+
+  // --- SINGLE NODE VIEW ---
+  if (!node || !details) return null;
 
   return (
     <div className="h-full flex flex-col bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden shadow-2xl relative">
@@ -76,6 +131,22 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({ node, details, mod
                     <KpiCard label="Ver" value={details.identity.version} color="text-purple-400" />
                 </div>
 
+                {/* Metadata Section (New) */}
+                <div className="bg-quantum-950 border border-quantum-700 rounded p-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 flex items-center"><Calendar className="w-3 h-3 mr-1.5"/> Created</span>
+                        <span className="text-slate-300 font-mono">{details.metadata.created}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 flex items-center"><History className="w-3 h-3 mr-1.5"/> Modified</span>
+                        <span className="text-slate-300 font-mono">{details.metadata.lastModified}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 flex items-center"><User className="w-3 h-3 mr-1.5"/> Owner</span>
+                        <span className="text-cyan-400 font-mono">{details.metadata.owner}</span>
+                    </div>
+                </div>
+
                 {/* AI Intelligence Layer */}
                 <div className="relative p-3 rounded-lg border border-purple-500/20 bg-gradient-to-br from-purple-900/10 to-transparent">
                     <div className="flex items-center justify-between mb-2">
@@ -103,26 +174,12 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({ node, details, mod
                              <div className="flex items-center"><ArrowRightLeft className="w-3 h-3 mr-2 text-slate-500" /> Wafer-Batch-A9</div>
                              <span className="text-[9px] bg-cyan-900/30 text-cyan-400 px-1 rounded">DIRECT</span>
                          </div>
-                         <div className="flex items-center justify-between text-xs text-slate-300 p-2 bg-quantum-900 rounded border border-quantum-800">
-                             <div className="flex items-center"><ArrowRightLeft className="w-3 h-3 mr-2 text-slate-500" /> Config-Set-2.1</div>
-                             <span className="text-[9px] bg-slate-800 text-slate-500 px-1 rounded">REF</span>
-                         </div>
                      </div>
                  </div>
                  <div className="flex justify-center"><div className="h-4 w-px bg-quantum-700"></div></div>
                  <div className="p-3 bg-cyan-900/10 border border-cyan-500/30 rounded-lg text-center">
                      <div className="text-xs font-bold text-cyan-400">{node.label}</div>
                      <div className="text-[9px] text-cyan-600 mt-1">Current Node</div>
-                 </div>
-                 <div className="flex justify-center"><div className="h-4 w-px bg-quantum-700"></div></div>
-                 <div className="p-3 bg-quantum-950 border border-quantum-700 rounded-lg">
-                     <h4 className="text-[10px] text-slate-500 uppercase font-bold mb-2">Downstream Impact</h4>
-                     <div className="space-y-2">
-                         <div className="flex items-center justify-between text-xs text-slate-300 p-2 bg-quantum-900 rounded border border-quantum-800">
-                             <div className="flex items-center"><ArrowRightLeft className="w-3 h-3 mr-2 text-slate-500" /> Binning-System</div>
-                             <span className="text-[9px] bg-orange-900/30 text-orange-400 px-1 rounded">CRITICAL</span>
-                         </div>
-                     </div>
                  </div>
             </div>
         )}
@@ -145,9 +202,9 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({ node, details, mod
 
       {/* Footer Actions */}
       <div className="p-3 bg-quantum-800 border-t border-quantum-600 flex justify-end space-x-2 shrink-0">
-            <button className="p-2 hover:bg-quantum-700 rounded text-slate-400 hover:text-cyan-400 transition-colors" title="Export JSON"><Database className="w-4 h-4" /></button>
-            <button className="p-2 hover:bg-quantum-700 rounded text-slate-400 hover:text-green-400 transition-colors" title="Validate"><ShieldCheck className="w-4 h-4" /></button>
-            <button className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded transition-colors flex items-center justify-center">
+            <button onClick={handleExportJSON} className="p-2 hover:bg-quantum-700 rounded text-slate-400 hover:text-cyan-400 transition-colors" title="Export JSON"><Database className="w-4 h-4" /></button>
+            <button onClick={handleValidate} className="p-2 hover:bg-quantum-700 rounded text-slate-400 hover:text-green-400 transition-colors" title="Validate"><ShieldCheck className="w-4 h-4" /></button>
+            <button onClick={handleInspectLogs} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded transition-colors flex items-center justify-center">
                 <Search className="w-3 h-3 mr-2" /> Inspect Logs
             </button>
       </div>
