@@ -1,13 +1,21 @@
-import React from 'react';
-import { Activity, Download, HardDrive, ShieldAlert, Terminal, BarChart2, Cpu, Zap, AlertOctagon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, Download, HardDrive, ShieldAlert, Terminal, BarChart2, Cpu, Zap, AlertOctagon, Loader2, CheckCircle2, FileCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
-const USAGE_DATA = [
+const USAGE_DATA_30D = [
   { name: 'Logic', visits: 4520, errors: 12 },
   { name: 'Sim', visits: 3100, errors: 45 },
   { name: 'Docs', visits: 2100, errors: 2 },
   { name: 'Analytics', visits: 2780, errors: 8 },
   { name: 'Security', visits: 1890, errors: 0 },
+];
+
+const USAGE_DATA_7D = [
+  { name: 'Logic', visits: 1200, errors: 1 },
+  { name: 'Sim', visits: 900, errors: 12 },
+  { name: 'Docs', visits: 450, errors: 0 },
+  { name: 'Analytics', visits: 600, errors: 2 },
+  { name: 'Security', visits: 320, errors: 0 },
 ];
 
 const LATENCY_DATA = Array.from({ length: 50 }, (_, i) => ({
@@ -16,6 +24,28 @@ const LATENCY_DATA = Array.from({ length: 50 }, (_, i) => ({
 }));
 
 export const AdminView: React.FC = () => {
+  const [timeRange, setTimeRange] = useState<'30d' | '7d'>('30d');
+  const [testStatus, setTestStatus] = useState<'idle' | 'running' | 'success'>('idle');
+  const [diagStatus, setDiagStatus] = useState<'idle' | 'running' | 'success'>('idle');
+
+  const chartData = timeRange === '30d' ? USAGE_DATA_30D : USAGE_DATA_7D;
+
+  const handleSelfTest = () => {
+      setTestStatus('running');
+      setTimeout(() => {
+          setTestStatus('success');
+          setTimeout(() => setTestStatus('idle'), 3000);
+      }, 2000);
+  };
+
+  const handleDiagnostics = () => {
+      setDiagStatus('running');
+      setTimeout(() => {
+          setDiagStatus('success');
+          setTimeout(() => setDiagStatus('idle'), 3000);
+      }, 2500);
+  };
+
   return (
     <div className="flex flex-col h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden">
         {/* Header */}
@@ -25,11 +55,44 @@ export const AdminView: React.FC = () => {
                 <h2 className="font-bold text-slate-100 tracking-wide">System Admin & Observability</h2>
             </div>
             <div className="flex space-x-3">
-                <button className="px-3 py-1.5 bg-quantum-900 border border-quantum-600 rounded text-xs text-slate-300 hover:text-cyan-400 flex items-center">
-                    <Terminal className="w-3 h-3 mr-2" /> Run Self-Test
+                <button 
+                    onClick={handleSelfTest}
+                    disabled={testStatus !== 'idle'}
+                    className={`px-3 py-1.5 border rounded text-xs transition-all flex items-center min-w-[120px] justify-center ${
+                        testStatus === 'success' 
+                        ? 'bg-green-900/20 border-green-500/50 text-green-400' 
+                        : testStatus === 'running' 
+                        ? 'bg-quantum-950 border-quantum-600 text-slate-400' 
+                        : 'bg-quantum-900 border-quantum-600 text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50'
+                    }`}
+                >
+                    {testStatus === 'running' ? (
+                        <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Testing...</>
+                    ) : testStatus === 'success' ? (
+                        <><CheckCircle2 className="w-3 h-3 mr-2" /> Passed</>
+                    ) : (
+                        <><Terminal className="w-3 h-3 mr-2" /> Run Self-Test</>
+                    )}
                 </button>
-                <button className="px-3 py-1.5 bg-quantum-700 border border-quantum-600 rounded text-xs text-white hover:bg-quantum-600 flex items-center shadow-lg">
-                    <Download className="w-3 h-3 mr-2" /> Diagnostic Bundle
+                
+                <button 
+                    onClick={handleDiagnostics}
+                    disabled={diagStatus !== 'idle'}
+                    className={`px-3 py-1.5 border rounded text-xs transition-all flex items-center min-w-[140px] justify-center ${
+                        diagStatus === 'success'
+                        ? 'bg-purple-900/20 border-purple-500/50 text-purple-400'
+                        : diagStatus === 'running'
+                        ? 'bg-quantum-800 border-quantum-600 text-slate-400'
+                        : 'bg-quantum-700 border-quantum-600 text-white hover:bg-quantum-600 hover:shadow-lg'
+                    }`}
+                >
+                    {diagStatus === 'running' ? (
+                        <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Packaging...</>
+                    ) : diagStatus === 'success' ? (
+                        <><FileCheck className="w-3 h-3 mr-2" /> Bundle Ready</>
+                    ) : (
+                        <><Download className="w-3 h-3 mr-2" /> Diagnostic Bundle</>
+                    )}
                 </button>
             </div>
         </div>
@@ -101,20 +164,38 @@ export const AdminView: React.FC = () => {
                      <h3 className="text-sm font-bold text-slate-200 uppercase flex items-center">
                         <BarChart2 className="w-4 h-4 mr-2 text-orange-400" /> Feature Usage Metrics
                     </h3>
-                    <select className="bg-quantum-950 border border-quantum-700 text-[10px] rounded px-2 py-1 text-slate-400">
-                        <option>Last 7 Days</option>
-                        <option>Last 30 Days</option>
+                    <select 
+                        value={timeRange}
+                        onChange={(e) => setTimeRange(e.target.value as any)}
+                        className="bg-quantum-950 border border-quantum-700 text-[10px] rounded px-3 py-1 text-slate-300 focus:outline-none focus:border-cyan-500/50 cursor-pointer"
+                    >
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
                     </select>
                  </div>
-                 <div className="h-64 w-full">
+                 <div className="h-72 w-full bg-quantum-950/50 rounded border border-quantum-800 p-2">
                      <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={USAGE_DATA} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                             <defs>
+                                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.8}/>
+                                    <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                                </linearGradient>
+                                <linearGradient id="errGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8}/>
+                                    <stop offset="100%" stopColor="#991b1b" stopOpacity={0.3}/>
+                                </linearGradient>
+                             </defs>
                              <CartesianGrid strokeDasharray="3 3" stroke="#1c2633" vertical={false} />
-                             <XAxis dataKey="name" stroke="#475569" fontSize={10} />
-                             <YAxis stroke="#475569" fontSize={10} />
-                             <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{ backgroundColor: '#0a0f16', borderColor: '#2b3a4a', color: '#e2e8f0' }} />
-                             <Bar dataKey="visits" name="Visits" fill="#22d3ee" radius={[4, 4, 0, 0]} barSize={40} />
-                             <Bar dataKey="errors" name="Errors" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
+                             <XAxis dataKey="name" stroke="#64748b" fontSize={11} tick={{fill: '#94a3b8'}} />
+                             <YAxis stroke="#64748b" fontSize={11} tick={{fill: '#94a3b8'}} />
+                             <Tooltip 
+                                cursor={{fill: 'rgba(30, 41, 59, 0.5)'}} 
+                                contentStyle={{ backgroundColor: '#0a0f16', borderColor: '#2b3a4a', color: '#e2e8f0', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' }} 
+                                itemStyle={{ fontSize: '12px' }}
+                             />
+                             <Bar dataKey="visits" name="Active Users" fill="url(#barGradient)" radius={[4, 4, 0, 0]} barSize={40} />
+                             <Bar dataKey="errors" name="System Errors" fill="url(#errGradient)" radius={[4, 4, 0, 0]} barSize={40} />
                          </BarChart>
                      </ResponsiveContainer>
                  </div>

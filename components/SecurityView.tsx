@@ -1,18 +1,36 @@
 import React, { useState } from 'react';
 import { 
     Shield, Lock, Users, Key, FileCheck, AlertOctagon, 
-    CheckCircle2, XCircle, RefreshCw, Eye, UserPlus
+    CheckCircle2, XCircle, RefreshCw, Eye, UserPlus, X, Save, AlertTriangle, Loader2
 } from 'lucide-react';
 
-export const SecurityView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'access' | 'audit' | 'compliance'>('access');
+interface UserData {
+    id: string;
+    name: string;
+    role: string;
+    mfa: boolean;
+    lastLogin: string;
+}
 
-  const users = [
+const INITIAL_USERS: UserData[] = [
     { id: 'USR-001', name: 'Dr. A. Vance', role: 'Admin', mfa: true, lastLogin: '2m ago' },
     { id: 'USR-002', name: 'J. Doe', role: 'Operator', mfa: true, lastLogin: '4h ago' },
     { id: 'USR-003', name: 'System_Auto', role: 'Service', mfa: true, lastLogin: '1s ago' },
     { id: 'USR-004', name: 'K. Lee', role: 'Engineer', mfa: false, lastLogin: '2d ago' },
-  ];
+];
+
+export const SecurityView: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'access' | 'audit' | 'compliance'>('access');
+  
+  // Access Control State
+  const [users, setUsers] = useState<UserData[]>(INITIAL_USERS);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [formData, setFormData] = useState({ name: '', role: 'Operator' });
+
+  // Security Center State
+  const [lockdownActive, setLockdownActive] = useState(false);
+  const [lockdownProcessing, setLockdownProcessing] = useState(false);
 
   const audits = [
       { id: 'EVT-992', type: 'AUTH_FAIL', source: '192.168.1.42', time: '10:42:01', detail: 'Invalid Token' },
@@ -20,8 +38,131 @@ export const SecurityView: React.FC = () => {
       { id: 'EVT-994', type: 'PERM_CHG', source: 'Admin', time: 'Yesterday', detail: 'Elevated USR-004 to Lead' },
   ];
 
+  // --- Handlers ---
+
+  const handleOpenInvite = () => {
+      setEditingUser(null);
+      setFormData({ name: '', role: 'Operator' });
+      setIsUserModalOpen(true);
+  };
+
+  const handleOpenEdit = (user: UserData) => {
+      setEditingUser(user);
+      setFormData({ name: user.name, role: user.role });
+      setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = () => {
+      if (!formData.name) return;
+
+      // TODO: Replace with real backend call to create/update user
+      if (editingUser) {
+          setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, name: formData.name, role: formData.role } : u));
+      } else {
+          const newUser: UserData = {
+              id: `USR-${Math.floor(Math.random() * 1000)}`,
+              name: formData.name,
+              role: formData.role,
+              mfa: false,
+              lastLogin: 'Never'
+          };
+          setUsers(prev => [...prev, newUser]);
+      }
+      setIsUserModalOpen(false);
+  };
+
+  const handleLockdown = () => {
+      if (lockdownProcessing) return;
+
+      if (lockdownActive) {
+          const confirm = window.confirm("Authenticate to lift System Lockdown?");
+          if (confirm) {
+              setLockdownProcessing(true);
+              // Simulate backend delay
+              setTimeout(() => {
+                  setLockdownActive(false);
+                  setLockdownProcessing(false);
+              }, 2000);
+          }
+      } else {
+          const confirm = window.confirm("WARNING: This will suspend all non-admin access and freeze logic nodes. Proceed?");
+          if (confirm) {
+              setLockdownProcessing(true);
+              // Simulate backend delay
+              setTimeout(() => {
+                  setLockdownActive(true);
+                  setLockdownProcessing(false);
+              }, 2000);
+          }
+      }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden relative">
+        
+        {/* Lockdown Overlay */}
+        {lockdownActive && !lockdownProcessing && (
+            <div className="absolute top-0 left-0 right-0 z-50 bg-red-600/90 text-white px-4 py-2 flex justify-between items-center shadow-2xl animate-pulse">
+                <div className="flex items-center space-x-2 font-bold uppercase tracking-widest">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span>System Lockdown Active</span>
+                </div>
+                <button 
+                    onClick={handleLockdown} 
+                    className="px-3 py-1 bg-white text-red-600 text-xs font-bold rounded hover:bg-slate-200 shadow-lg"
+                >
+                    Authenticate to Lift
+                </button>
+            </div>
+        )}
+
+        {/* User Modal */}
+        {isUserModalOpen && (
+            <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-quantum-900 border border-quantum-600 rounded-lg w-full max-w-md p-6 shadow-2xl">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-200">{editingUser ? 'Edit User' : 'Invite New User'}</h3>
+                        <button onClick={() => setIsUserModalOpen(false)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Name</label>
+                            <input 
+                                type="text" 
+                                className="w-full bg-quantum-950 border border-quantum-700 rounded p-2 text-slate-200 focus:border-cyan-500 outline-none"
+                                value={formData.name}
+                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                placeholder="e.g. Sarah Connor"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Role Permission</label>
+                            <select 
+                                className="w-full bg-quantum-950 border border-quantum-700 rounded p-2 text-slate-200 focus:border-cyan-500 outline-none"
+                                value={formData.role}
+                                onChange={e => setFormData({...formData, role: e.target.value})}
+                            >
+                                <option>Admin</option>
+                                <option>Engineer</option>
+                                <option>Operator</option>
+                                <option>Auditor</option>
+                                <option>Service</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <button onClick={() => setIsUserModalOpen(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-white">Cancel</button>
+                        <button 
+                            onClick={handleSaveUser}
+                            className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded flex items-center shadow-glow-cyan"
+                        >
+                            <Save className="w-3 h-3 mr-2" /> {editingUser ? 'Save Changes' : 'Send Invite'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Header Tabs */}
         <div className="flex items-center px-4 border-b border-quantum-600 bg-quantum-800 shrink-0 h-12">
             <TabButton 
@@ -55,7 +196,10 @@ export const SecurityView: React.FC = () => {
                             <h2 className="text-lg font-bold text-slate-200">User Roles & Permissions</h2>
                             <p className="text-xs text-slate-500 mt-1">Manage RBAC policies for the Quantum Control Plane.</p>
                         </div>
-                        <button className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-bold flex items-center shadow-glow-cyan">
+                        <button 
+                            onClick={handleOpenInvite}
+                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-bold flex items-center shadow-glow-cyan transition-colors"
+                        >
                             <UserPlus className="w-3 h-3 mr-2" /> Invite User
                         </button>
                     </div>
@@ -96,7 +240,12 @@ export const SecurityView: React.FC = () => {
                                         </td>
                                         <td className="px-4 py-3 font-mono text-slate-400">{u.lastLogin}</td>
                                         <td className="px-4 py-3 text-right">
-                                            <button className="text-slate-500 hover:text-cyan-400 transition-colors">Edit</button>
+                                            <button 
+                                                onClick={() => handleOpenEdit(u)}
+                                                className="text-slate-500 hover:text-cyan-400 transition-colors"
+                                            >
+                                                Edit
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -145,12 +294,26 @@ export const SecurityView: React.FC = () => {
                                 <SecurityCheck label="Backup Integrity" status="pass" />
                             </div>
                         </div>
-                        <div className="p-4 bg-red-900/10 border border-red-500/20 rounded-lg">
-                            <h4 className="text-xs font-bold text-red-400 uppercase mb-2">Emergency</h4>
-                            <button className="w-full py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded shadow-lg transition-colors">
-                                LOCKDOWN SYSTEM
+                        <div className={`p-4 border rounded-lg transition-all duration-300 ${lockdownActive ? 'bg-red-950 border-red-500' : 'bg-red-900/10 border-red-500/20'}`}>
+                            <h4 className={`text-xs font-bold uppercase mb-2 ${lockdownActive ? 'text-white' : 'text-red-400'}`}>Emergency Protocols</h4>
+                            <button 
+                                onClick={handleLockdown}
+                                disabled={lockdownProcessing}
+                                className={`w-full py-2 text-xs font-bold rounded shadow-lg transition-all flex items-center justify-center ${
+                                    lockdownActive 
+                                    ? 'bg-white text-red-600 hover:bg-slate-200' 
+                                    : 'bg-red-600 hover:bg-red-500 text-white'
+                                }`}
+                            >
+                                {lockdownProcessing ? (
+                                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> {lockdownActive ? 'LIFTING...' : 'LOCKING...'}</>
+                                ) : (
+                                    <>{lockdownActive ? 'LIFT LOCKDOWN' : 'LOCKDOWN SYSTEM'}</>
+                                )}
                             </button>
-                            <p className="text-[10px] text-red-300/60 mt-2 text-center">Requires Admin Master Key</p>
+                            <p className={`text-[10px] mt-2 text-center ${lockdownActive ? 'text-red-200' : 'text-red-300/60'}`}>
+                                {lockdownActive ? 'System is currently frozen. Auth required.' : 'Requires Admin Master Key'}
+                            </p>
                         </div>
                     </div>
                 </div>
