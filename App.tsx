@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, Network, FileText, Settings, 
   ChevronsLeft, ChevronsRight, CheckCircle2, CircleDashed, AlertCircle, Database, GitBranch, PlayCircle, Activity,
-  Hammer, Monitor, BarChart2, Server, Shield, CreditCard, HelpCircle, HardDrive, Factory, Link2, BrainCircuit, Eye
+  Hammer, Monitor, BarChart2, Server, Shield, CreditCard, HelpCircle, HardDrive, Factory, Link2, BrainCircuit, Eye, Lock, Fingerprint, ArrowRight
 } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { ConsoleLogger } from './components/ConsoleLogger';
@@ -28,6 +28,7 @@ import { ManufacturingView } from './components/ManufacturingView';
 import { IntegrationsView } from './components/IntegrationsView';
 import { AIOversightView } from './components/AIOversightView';
 import { LiveFeedView } from './components/LiveFeedView';
+import { UserProfileView } from './components/UserProfileView';
 import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, SystemModulesState, HandshakeState } from './types';
 
 // --- MOCK DATA GENERATORS ---
@@ -63,8 +64,87 @@ const generateMockHistory = () => {
   }));
 };
 
+// --- LOGIN SCREEN COMPONENT ---
+const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setTimeout(() => {
+            onLogin();
+        }, 1500);
+    };
+
+    return (
+        <div className="min-h-screen w-full bg-quantum-950 flex items-center justify-center relative overflow-hidden">
+            {/* Ambient Background */}
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-cyan-900/20 rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+
+            <div className="w-full max-w-md bg-quantum-900/80 backdrop-blur-md border border-quantum-600 rounded-2xl p-8 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-gradient-to-tr from-cyan-600 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-glow-cyan">
+                        <Activity className="w-8 h-8 text-white" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-100 tracking-widest">LOGIC<span className="text-cyan-400">FLOW</span></h1>
+                    <p className="text-xs text-slate-500 mt-2 font-mono">QUANTUM OPERATIONS CONTROL PLANE</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <div className="space-y-4">
+                        <div className="group">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Operator ID</label>
+                            <div className="flex items-center bg-quantum-950 border border-quantum-700 rounded-lg px-4 py-3 group-focus-within:border-cyan-500 transition-colors">
+                                <Fingerprint className="w-5 h-5 text-slate-500 mr-3" />
+                                <input 
+                                    type="text" 
+                                    defaultValue="OP-742-ALPHA"
+                                    className="bg-transparent border-none text-slate-200 w-full focus:outline-none text-sm font-mono"
+                                />
+                            </div>
+                        </div>
+                        <div className="group">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Access Key</label>
+                            <div className="flex items-center bg-quantum-950 border border-quantum-700 rounded-lg px-4 py-3 group-focus-within:border-cyan-500 transition-colors">
+                                <Lock className="w-5 h-5 text-slate-500 mr-3" />
+                                <input 
+                                    type="password" 
+                                    defaultValue="password"
+                                    className="bg-transparent border-none text-slate-200 w-full focus:outline-none text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg shadow-glow-cyan transition-all transform active:scale-95 flex items-center justify-center"
+                    >
+                        {isLoading ? (
+                            <><CircleDashed className="w-5 h-5 mr-2 animate-spin" /> AUTHENTICATING...</>
+                        ) : (
+                            <>INITIALIZE SESSION <ArrowRight className="w-5 h-5 ml-2" /></>
+                        )}
+                    </button>
+                </form>
+
+                <div className="mt-8 pt-6 border-t border-quantum-700 text-center">
+                    <p className="text-[10px] text-slate-600">
+                        Unauthorized access is a Class A felony under the Quantum Security Act of 2032.
+                        <br />System ID: Q-OS-742
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'logic' | 'lineage' | 'sim' | 'analytics' | 'manufacturing' | 'vision' | 'integrations' | 'docs' | 'settings' | 'resources' | 'security' | 'billing' | 'support' | 'admin' | 'oversight'>('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'logic' | 'lineage' | 'sim' | 'analytics' | 'manufacturing' | 'vision' | 'integrations' | 'docs' | 'settings' | 'resources' | 'security' | 'billing' | 'support' | 'admin' | 'oversight' | 'profile'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState(false);
@@ -139,6 +219,8 @@ const App: React.FC = () => {
 
   // Initialization Handshake Sequence
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const runHandshake = async () => {
         // Step 1: Quantum Core
         setModulesStatus(prev => ({...prev, quantumCore: 'loading'}));
@@ -162,7 +244,7 @@ const App: React.FC = () => {
     };
     
     runHandshake();
-  }, [addLog]);
+  }, [addLog, isLoggedIn]);
 
   const handleNodeSelect = (nodeId: string) => {
     setSelectedNodeId(nodeId);
@@ -200,6 +282,8 @@ const App: React.FC = () => {
 
   // Simulate System Activity
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const interval = setInterval(() => {
       // Update Metrics
       setMetrics(prev => ({
@@ -239,7 +323,18 @@ const App: React.FC = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [addLog]);
+  }, [addLog, isLoggedIn]);
+
+  const handleLogout = () => {
+      setIsLoggedIn(false);
+      // Reset state if needed
+      setSidebarOpen(true);
+      setActiveTab('dashboard');
+  };
+
+  if (!isLoggedIn) {
+      return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
+  }
 
   const selectedNode = INITIAL_NODES.find(n => n.id === selectedNodeId);
   const selectedNodeDetails = selectedNode ? (MOCK_NODE_DETAILS[selectedNode.id] || MOCK_NODE_DETAILS['default']) : null;
@@ -354,7 +449,11 @@ const App: React.FC = () => {
         )}
 
         {/* Header */}
-        <Header onToggleContrast={toggleHighContrast} />
+        <Header 
+            onToggleContrast={toggleHighContrast} 
+            onNavigate={(tab) => setActiveTab(tab as any)} 
+            onLogout={handleLogout}
+        />
 
         {/* Dynamic Viewport */}
         <div className="flex-1 flex overflow-hidden p-4 gap-4">
@@ -427,6 +526,7 @@ const App: React.FC = () => {
                 {activeTab === 'admin' && <AdminView />}
                 {activeTab === 'manufacturing' && <ManufacturingView />}
                 {activeTab === 'integrations' && <IntegrationsView />}
+                {activeTab === 'profile' && <UserProfileView />}
 
                 {activeTab === 'docs' && (
                     modulesStatus.document === 'success' 

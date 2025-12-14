@@ -1,24 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bell, User, Settings, LogOut, HelpCircle, CreditCard, Users, 
-  Shield, CheckCircle2, AlertTriangle, Info, Eye
+  Shield, CheckCircle2, AlertTriangle, Info, Eye, ChevronRight, Check
 } from 'lucide-react';
 
 interface HeaderProps {
     onToggleContrast?: () => void;
+    onNavigate?: (view: string) => void;
+    onLogout?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
+const TEAMS = [
+    { id: 't1', name: 'Logic-Alpha', role: 'Admin' },
+    { id: 't2', name: 'Dev-Ops-Beta', role: 'Viewer' },
+    { id: 't3', name: 'Manufacturing-X', role: 'Editor' },
+];
+
+export const Header: React.FC<HeaderProps> = ({ onToggleContrast, onNavigate, onLogout }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [activeTeamId, setActiveTeamId] = useState('t1');
+  const [viewState, setViewState] = useState<'main' | 'teams'>('main');
+  
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  const activeTeam = TEAMS.find(t => t.id === activeTeamId);
 
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
+        setViewState('main'); // Reset sub-menu on close
       }
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setIsNotifOpen(false);
@@ -27,6 +41,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleNav = (target: string) => {
+      if (onNavigate) onNavigate(target);
+      setIsProfileOpen(false);
+  };
+
+  const handleTeamSwitch = (id: string) => {
+      setActiveTeamId(id);
+      setViewState('main');
+      // Simulate reload or data refresh
+      console.log(`Switched to team ${id}`);
+  };
 
   const notifications = [
     { id: 1, type: 'critical', title: 'Quantum Core Instability', time: '2m ago', desc: 'Coherence dropped below 92% in Sector 4.' },
@@ -102,32 +128,82 @@ export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
                 {/* Profile Dropdown */}
                 {isProfileOpen && (
                     <div className="absolute right-0 top-full mt-2 w-64 bg-quantum-900 border border-quantum-600 rounded-lg shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-4 py-4 bg-quantum-950 border-b border-quantum-600">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 rounded bg-gradient-to-tr from-cyan-600 to-purple-700 flex items-center justify-center font-bold text-white text-sm shadow-glow-cyan">
-                                    OP
+                        
+                        {/* MAIN MENU VIEW */}
+                        {viewState === 'main' && (
+                            <>
+                                <div className="px-4 py-4 bg-quantum-950 border-b border-quantum-600">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 rounded bg-gradient-to-tr from-cyan-600 to-purple-700 flex items-center justify-center font-bold text-white text-sm shadow-glow-cyan">
+                                            OP
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <div className="text-sm font-bold text-slate-200 truncate">Lead Operator</div>
+                                            <div className="text-xs text-slate-500 font-mono truncate">{activeTeam?.name}</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-sm font-bold text-slate-200">Lead Operator</div>
-                                    <div className="text-xs text-slate-500 font-mono">Team: Logic-Alpha</div>
+                                <div className="py-2">
+                                    <MenuItem 
+                                        icon={<Users className="w-4 h-4" />} 
+                                        label="Switch Team" 
+                                        onClick={() => setViewState('teams')}
+                                        sublabel={activeTeam?.name}
+                                        hasSubmenu
+                                    />
+                                    <MenuItem icon={<Eye className="w-4 h-4" />} label="Toggle High Contrast" onClick={onToggleContrast} />
+                                    <MenuItem icon={<User className="w-4 h-4" />} label="My Profile" onClick={() => handleNav('profile')} />
+                                    <MenuItem icon={<Shield className="w-4 h-4" />} label="Security & Keys" onClick={() => handleNav('security')} />
+                                    <MenuItem icon={<CreditCard className="w-4 h-4" />} label="Billing" onClick={() => handleNav('billing')} />
+                                    <div className="my-1 border-t border-quantum-700 mx-2"></div>
+                                    <MenuItem icon={<Settings className="w-4 h-4" />} label="Preferences" onClick={() => handleNav('settings')} />
+                                    <MenuItem icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" onClick={() => handleNav('support')} />
                                 </div>
-                            </div>
-                        </div>
-                        <div className="py-2">
-                            <MenuItem icon={<Users className="w-4 h-4" />} label="Switch Team" />
-                            <MenuItem icon={<Eye className="w-4 h-4" />} label="Toggle High Contrast" onClick={onToggleContrast} />
-                            <MenuItem icon={<User className="w-4 h-4" />} label="My Profile" />
-                            <MenuItem icon={<Shield className="w-4 h-4" />} label="Security & Keys" />
-                            <MenuItem icon={<CreditCard className="w-4 h-4" />} label="Billing" />
-                            <div className="my-1 border-t border-quantum-700 mx-2"></div>
-                            <MenuItem icon={<Settings className="w-4 h-4" />} label="Preferences" />
-                            <MenuItem icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" />
-                        </div>
-                        <div className="p-2 bg-quantum-950 border-t border-quantum-600">
-                             <button className="flex items-center w-full px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded transition-colors">
-                                <LogOut className="w-4 h-4 mr-2" /> Sign Out
-                             </button>
-                        </div>
+                                <div className="p-2 bg-quantum-950 border-t border-quantum-600">
+                                     <button 
+                                        onClick={onLogout}
+                                        className="flex items-center w-full px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                     >
+                                        <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                                     </button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* TEAM SWITCHER VIEW */}
+                        {viewState === 'teams' && (
+                            <>
+                                <div className="px-2 py-3 bg-quantum-950 border-b border-quantum-600 flex items-center space-x-2">
+                                    <button onClick={() => setViewState('main')} className="p-1 hover:bg-quantum-800 rounded text-slate-400 hover:text-white">
+                                        <ChevronRight className="w-4 h-4 rotate-180" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">Select Team</span>
+                                </div>
+                                <div className="py-2 max-h-60 overflow-y-auto">
+                                    {TEAMS.map(team => (
+                                        <button
+                                            key={team.id}
+                                            onClick={() => handleTeamSwitch(team.id)}
+                                            className="w-full text-left px-4 py-3 hover:bg-quantum-800 transition-colors flex items-center justify-between group"
+                                        >
+                                            <div>
+                                                <div className={`text-sm font-medium ${activeTeamId === team.id ? 'text-cyan-400' : 'text-slate-300 group-hover:text-white'}`}>
+                                                    {team.name}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 font-mono capitalize">{team.role}</div>
+                                            </div>
+                                            {activeTeamId === team.id && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
+                                        </button>
+                                    ))}
+                                    <div className="px-4 pt-2 mt-2 border-t border-quantum-700">
+                                        <button className="w-full py-2 border border-dashed border-quantum-600 rounded text-xs text-slate-500 hover:text-cyan-400 hover:border-cyan-500/30 transition-all">
+                                            + Create New Team
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
                     </div>
                 )}
             </div>
@@ -136,9 +212,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleContrast }) => {
   );
 };
 
-const MenuItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
-    <button onClick={onClick} className="flex items-center w-full px-4 py-2 text-sm text-slate-300 hover:bg-quantum-800 hover:text-cyan-400 transition-colors">
-        <span className="mr-3 text-slate-500">{icon}</span>
-        {label}
+const MenuItem = ({ icon, label, onClick, hasSubmenu, sublabel }: { icon: React.ReactNode, label: string, onClick?: () => void, hasSubmenu?: boolean, sublabel?: string }) => (
+    <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-2 text-sm text-slate-300 hover:bg-quantum-800 hover:text-cyan-400 transition-colors group">
+        <div className="flex items-center">
+            <span className="mr-3 text-slate-500 group-hover:text-cyan-400 transition-colors">{icon}</span>
+            {label}
+        </div>
+        <div className="flex items-center">
+            {sublabel && <span className="text-[10px] text-slate-500 mr-2 font-mono hidden group-hover:inline-block">{sublabel}</span>}
+            {hasSubmenu && <ChevronRight className="w-3 h-3 text-slate-600" />}
+        </div>
     </button>
 );
