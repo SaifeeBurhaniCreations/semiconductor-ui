@@ -1,18 +1,29 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { LogicNode, ModuleType } from '../types';
 import { NodeContextMenu } from './NodeContextMenu';
-import { ZoomIn, ZoomOut, Maximize, Layers, Scan } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Layers, Search, X } from 'lucide-react';
 
 interface LogicGraphProps {
   nodes: LogicNode[];
   onNodeSelect?: (nodeId: string) => void;
+  onEdgeSelect?: (edgeId: string) => void;
   selectedNodeId?: string | null;
-  builderMode?: boolean; // New Prop
-  layoutTrigger?: number; // Prop to trigger re-layout
+  selectedEdgeId?: string | null;
+  builderMode?: boolean; 
+  layoutTrigger?: number; 
 }
 
-export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, selectedNodeId, builderMode, layoutTrigger = 0 }) => {
+export const LogicGraph: React.FC<LogicGraphProps> = ({ 
+    nodes, 
+    onNodeSelect, 
+    onEdgeSelect, 
+    selectedNodeId, 
+    selectedEdgeId,
+    builderMode, 
+    layoutTrigger = 0 
+}) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   
@@ -20,6 +31,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, nodeId: string } | null>(null);
   const [heatmapMode, setHeatmapMode] = useState(false);
   const [transform, setTransform] = useState({ k: 1, x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
 
   // D3 Selection Refs
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
@@ -44,21 +56,26 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
         .scaleExtent([0.1, 4])
         .on("zoom", (event) => {
             g.attr("transform", event.transform);
-            setTransform(event.transform); // Sync state for UI controls if needed
+            setTransform(event.transform); 
         });
     
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Initial centering (only if not already transformed)
-    // svg.call(zoom.transform, d3.zoomIdentity.translate(width/2, height/2).scale(0.8));
-
-    // Links
+    // Prepare Links with IDs
     const links: any[] = [];
     nodes.forEach(node => {
         node.connections.forEach(targetId => {
             const target = nodes.find(n => n.id === targetId);
-            if (target) links.push({ source: node.id, target: target.id });
+            if (target) {
+                // Determine source/target order for consistent ID if undirected, but this is directed logic flow
+                // ID format: source-target
+                links.push({ 
+                    source: node.id, 
+                    target: target.id, 
+                    id: `${node.id}-${target.id}` 
+                });
+            }
         });
     });
 
@@ -84,18 +101,41 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
       .append("path")
       .attr("d", "M0,-5L10,0L0,5")
       .attr("fill", "#2b3a4a");
+      
+    // Selected Arrowhead
+    defs.append("marker")
+      .attr("id", "arrowhead-selected")
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 28)
+      .attr("refY", 0)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", "#a855f7"); // Purple
 
     // Edges
-    const link = g.append("g")
+    // Need a group for lines to ensure they are behind nodes
+    const linkGroup = g.append("g").attr("class", "links");
+    
+    const link = linkGroup
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke", "#1c2633")
-      .attr("stroke-width", 2)
-      .attr("marker-end", "url(#arrowhead)");
+      .attr("stroke", (d: any) => d.id === selectedEdgeId ? "#a855f7" : "#1c2633") // Purple if selected
+      .attr("stroke-width", (d: any) => d.id === selectedEdgeId ? 3 : 2)
+      .attr("marker-end", (d: any) => d.id === selectedEdgeId ? "url(#arrowhead-selected)" : "url(#arrowhead)")
+      .attr("class", "cursor-pointer transition-all duration-300 hover:stroke-cyan-500/50")
+      .on("click", (event, d: any) => {
+          event.stopPropagation();
+          if (onEdgeSelect) onEdgeSelect(d.id);
+          setContextMenu(null);
+      });
 
     // Nodes Group
     const node = g.append("g")
+      .attr("class", "nodes")
       .selectAll("g")
       .data(nodes)
       .join("g")
@@ -113,15 +153,14 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
           setContextMenu({ x: event.clientX, y: event.clientY, nodeId: d.id });
       });
 
-    // Node Shape
+    // Node Shape (Hexagon)
     node.append("path")
-      .attr("d", "M0,-24 L20.78,-12 L20.78,12 L0,24 L-20.78,12 L-20.78,-12 Z") // Hexagon
+      .attr("d", "M0,-24 L20.78,-12 L20.78,12 L0,24 L-20.78,12 L-20.78,-12 Z") 
       .attr("fill", (d: LogicNode) => {
           if (heatmapMode) {
-              // Mock heatmap logic
               const heat = Math.random();
-              if (heat > 0.8) return "#ef4444"; // Hot
-              if (heat > 0.5) return "#f97316"; // Warm
+              if (heat > 0.8) return "#ef4444"; 
+              if (heat > 0.5) return "#f97316"; 
               return "#0a0f16";
           }
           return d.id === selectedNodeId ? "#164e63" : "#0a0f16";
@@ -133,14 +172,30 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
       .attr("stroke-width", (d: LogicNode) => d.id === selectedNodeId ? 3 : 2)
       .attr("class", "transition-colors duration-300 cursor-pointer");
 
-    // Liveness Indicator
+    // Liveness Indicator (Center)
     node.filter((d: LogicNode) => d.status === 'active')
       .append("circle")
+      .attr("cx", 0)
+      .attr("cy", 0)
+      .attr("r", 4)
+      .attr("fill", "rgba(34, 211, 238, 0.2)")
+      .attr("class", "animate-ping");
+
+    // Health Status Indicator (Small dot on rim)
+    node.append("circle")
       .attr("cx", 14)
       .attr("cy", -14)
       .attr("r", 4)
-      .attr("fill", "#22d3ee")
-      .attr("class", "animate-pulse");
+      .attr("fill", (d: LogicNode) => {
+          switch(d.status) {
+              case 'active': return "#10b981"; // Green
+              case 'idle': return "#f59e0b"; // Yellow/Orange
+              case 'error': return "#ef4444"; // Red
+              default: return "#64748b"; // Slate
+          }
+      })
+      .attr("stroke", "#0a0f16")
+      .attr("stroke-width", 1);
 
     // Labels
     node.append("text")
@@ -195,7 +250,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
       d.fy = null;
     }
 
-  }, [nodes, selectedNodeId, heatmapMode, builderMode]); // Re-render when props change
+  }, [nodes, selectedNodeId, selectedEdgeId, heatmapMode, builderMode]); // Re-render when props change
 
   // Handle layout trigger
   useEffect(() => {
@@ -203,6 +258,34 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
           simulationRef.current.alpha(1).restart();
       }
   }, [layoutTrigger]);
+
+  // Handle Search
+  const handleSearch = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!searchQuery.trim() || !wrapperRef.current || !svgRef.current || !zoomRef.current) return;
+
+      const targetNode = nodes.find(n => 
+          n.label.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          n.id.toLowerCase() === searchQuery.toLowerCase()
+      );
+
+      if (targetNode && targetNode.x !== undefined && targetNode.y !== undefined) {
+          if (onNodeSelect) onNodeSelect(targetNode.id);
+          
+          const width = wrapperRef.current.clientWidth;
+          const height = wrapperRef.current.clientHeight;
+          const scale = 1.5;
+          const x = -targetNode.x * scale + width / 2;
+          const y = -targetNode.y * scale + height / 2;
+
+          const transform = d3.zoomIdentity.translate(x, y).scale(scale);
+          
+          d3.select(svgRef.current)
+            .transition()
+            .duration(750)
+            .call(zoomRef.current.transform, transform);
+      }
+  };
 
   // Zoom Controls
   const handleZoom = (factor: number) => {
@@ -219,7 +302,11 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
     <div 
         ref={wrapperRef} 
         className="w-full h-full bg-quantum-900 border border-quantum-600 rounded-lg overflow-hidden relative shadow-lg"
-        onClick={() => setContextMenu(null)}
+        onClick={() => {
+            setContextMenu(null);
+            if(onNodeSelect) onNodeSelect(""); // Clear selection
+            if(onEdgeSelect) onEdgeSelect(""); 
+        }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
             e.preventDefault();
@@ -240,7 +327,7 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
        </div>
 
        {/* Toolbar */}
-       <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
+       <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2 pointer-events-auto">
             <div className="flex flex-col bg-quantum-950 border border-quantum-700 rounded-lg overflow-hidden shadow-xl">
                 <button onClick={() => handleZoom(1.2)} className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-quantum-800 transition-colors" title="Zoom In"><ZoomIn className="w-4 h-4" /></button>
                 <div className="h-px bg-quantum-700"></div>
@@ -260,16 +347,36 @@ export const LogicGraph: React.FC<LogicGraphProps> = ({ nodes, onNodeSelect, sel
             </div>
        </div>
 
-       {/* Top Status */}
-       <div className="absolute top-0 left-0 px-3 py-2 z-10 flex space-x-2">
-            <span className="text-xs font-mono uppercase tracking-widest text-slate-500 bg-quantum-950/80 px-2 py-1 border border-quantum-600 rounded backdrop-blur">
-                Logic Topology {builderMode ? '[BUILDER]' : '[VIEWER]'}
-            </span>
-            {heatmapMode && (
-                <span className="text-xs font-mono uppercase tracking-widest text-orange-400 bg-orange-950/80 px-2 py-1 border border-orange-600/50 rounded backdrop-blur animate-pulse">
-                    HEATMAP ACTIVE
+       {/* Top Status & Search */}
+       <div className="absolute top-0 left-0 right-0 p-3 z-10 flex justify-between items-start pointer-events-none">
+            <div className="flex space-x-2 pointer-events-auto">
+                <span className="text-xs font-mono uppercase tracking-widest text-slate-500 bg-quantum-950/80 px-2 py-1 border border-quantum-600 rounded backdrop-blur flex items-center">
+                    Topology {builderMode ? '[BUILDER]' : '[VIEWER]'}
                 </span>
-            )}
+                {heatmapMode && (
+                    <span className="text-xs font-mono uppercase tracking-widest text-orange-400 bg-orange-950/80 px-2 py-1 border border-orange-600/50 rounded backdrop-blur animate-pulse">
+                        HEATMAP ACTIVE
+                    </span>
+                )}
+            </div>
+
+            <form onSubmit={handleSearch} className="flex items-center pointer-events-auto relative group">
+                <div className="flex items-center bg-quantum-950/80 backdrop-blur border border-quantum-600 rounded-lg px-2 py-1 focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/20 transition-all">
+                    <Search className="w-3 h-3 text-slate-500 mr-2" />
+                    <input 
+                        type="text" 
+                        placeholder="Search Node..." 
+                        className="bg-transparent border-none text-xs text-slate-200 focus:outline-none w-32 placeholder-slate-600"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                        <button type="button" onClick={() => setSearchQuery('')} className="text-slate-500 hover:text-white">
+                            <X className="w-3 h-3" />
+                        </button>
+                    )}
+                </div>
+            </form>
        </div>
 
        {/* SVG Canvas */}
