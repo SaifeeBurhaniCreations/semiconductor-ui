@@ -9,4 +9,4 @@ MESSAGE="$*"
 
 git add .
 git commit -m "auto: $MESSAGE"
-git push
+git pull
