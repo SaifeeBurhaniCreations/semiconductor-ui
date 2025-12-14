@@ -83,7 +83,7 @@ const DOC_CONTENT: Record<string, { title: string, content: React.ReactNode }> =
                     </div>
                     <div className="border-b border-quantum-700 pb-4">
                         <h4 className="text-slate-200 font-bold text-sm mb-2">Calibration Drift</h4>
-                        <p className="text-xs text-slate-400">If sensor readings fluctuate >5%, initiate a recalibration sequence via the Resources tab.</p>
+                        <p className="text-xs text-slate-400">If sensor readings fluctuate &gt; 5%, initiate a recalibration sequence via the Resources tab.</p>
                     </div>
                 </div>
             </div>
