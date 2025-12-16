@@ -37,84 +37,6 @@ import { LogEntry, LogicNode, SystemMetrics, ModuleType, NodeDetails, EdgeDetail
 
 // --- MOCK DATA GENERATORS ---
 
-<<<<<<< HEAD
-const INITIAL_NODES: LogicNode[] = [
-  {
-    id: "1",
-    label: "Main Controller",
-    type: ModuleType.LOGIC,
-    status: "active",
-    x: 0,
-    y: 0,
-    connections: ["2", "3", "4"],
-  },
-  {
-    id: "2",
-    label: "Sensor Array A",
-    type: ModuleType.SENSOR,
-    status: "active",
-    x: 0,
-    y: 0,
-    connections: ["5"],
-  },
-  {
-    id: "3",
-    label: "AI Inference Engine",
-    type: ModuleType.AI_CORE,
-    status: "active",
-    x: 0,
-    y: 0,
-    connections: ["5", "6"],
-  },
-  {
-    id: "4",
-    label: "Safety Protocol",
-    type: ModuleType.LOGIC,
-    status: "idle",
-    x: 0,
-    y: 0,
-    connections: ["6"],
-  },
-  {
-    id: "5",
-    label: "Actuator Drive",
-    type: ModuleType.ACTUATOR,
-    status: "active",
-    x: 0,
-    y: 0,
-    connections: [],
-  },
-  {
-    id: "6",
-    label: "Data Logger",
-    type: ModuleType.LOGIC,
-    status: "active",
-    x: 0,
-    y: 0,
-    connections: [],
-  },
-];
-
-const MOCK_NODE_DETAILS: Record<string, NodeDetails> = {
-  default: {
-    identity: {
-      role: "Process Controller",
-      category: "Logic Core",
-      version: "v2.4.1",
-      dependencies: 3,
-    },
-    state: {
-      lastExecution: "0ms ago",
-      health: 99,
-      activeThreads: 12,
-      uptime: "48h 12m",
-    },
-    intelligence: {
-      optimizationScore: 92,
-      prediction: "Nominal throughput expected for next 4 cycles.",
-      anomalyProbability: "Low (<0.1%)",
-    },
-=======
 const INITIAL_NODES_DATA: LogicNode[] = [
   { id: '1', label: 'Main Controller', type: ModuleType.LOGIC, status: 'active', x: 0, y: 0, connections: ['2', '3', '4'] },
   { id: '2', label: 'Sensor Array A', type: ModuleType.SENSOR, status: 'active', x: 0, y: 0, connections: ['5'] },
@@ -130,7 +52,6 @@ const MOCK_NODE_DETAILS: Record<string, NodeDetails> = {
     metadata: { created: '2023-11-15', lastModified: '2h ago', owner: 'Dr. Vance' },
     state: { lastExecution: '0ms ago', health: 99, activeThreads: 12, uptime: '48h 12m' },
     intelligence: { optimizationScore: 92, prediction: 'Nominal throughput expected for next 4 cycles.', anomalyProbability: 'Low (<0.1%)' }
->>>>>>> 8aad6e525e887c2c638847a05ec8a3fec4419c31
   },
   '3': { // AI Engine specific
     identity: { role: 'Inference Unit', category: 'Neural Processor', version: 'v4.0.0-alpha', dependencies: 8 },
@@ -549,13 +470,6 @@ const App: React.FC = () => {
   };
 
   const handleInspectorAction = (action: string) => {
-<<<<<<< HEAD
-    addLog(
-      `Initiating ${action.toUpperCase()} on Node ${selectedNodeId}...`,
-      "AI",
-      "OPS"
-    );
-=======
     addLog(`Initiating ${action.toUpperCase()} on Node Selection...`, 'AI', 'OPS');
   };
 
@@ -623,7 +537,6 @@ const App: React.FC = () => {
       setNodes([...remainingNodes, ...groupNode.groupChildren]);
       setSelectedNodeIds([]);
       addLog(`Ungrouped cluster ${groupId}`, 'INFO', 'TOPO');
->>>>>>> 8aad6e525e887c2c638847a05ec8a3fec4419c31
   };
 
   const toggleHighContrast = () => {

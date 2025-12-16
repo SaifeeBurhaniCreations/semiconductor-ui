@@ -246,21 +246,15 @@ export const AIOversightView: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-<<<<<<< HEAD
-                            <div className="mt-4 p-3 bg-purple-900/10 border border-purple-500/20 rounded text-xs text-purple-200 leading-relaxed">
-                                <strong className="text-purple-400 block mb-1">Logic Path:</strong>
-                                IF <span className="font-mono">Temp_Variance &gt; 0.5</span> AND <span className="font-mono">Vibration_Trend == Rising</span> THEN <span className="font-mono">Optimization_Action</span> PREDICTED WITH 92% CONFIDENCE.
-=======
 
                             <div className="mt-6 p-4 bg-purple-900/10 border border-purple-500/20 rounded-lg text-xs text-purple-200 leading-relaxed shadow-inner">
                                 <div className="flex items-start">
                                     <Activity className="w-4 h-4 mr-2 text-purple-400 shrink-0 mt-0.5" />
                                     <div>
                                         <strong className="text-purple-400 block mb-1">Inference Path:</strong>
-                                        Detected <span className="font-mono text-orange-300">Temp_Variance > 0.5</span> combined with rising <span className="font-mono text-cyan-300">Vibration_Trend</span>. The model predicts a thermal runaway with <span className="font-bold text-white">92% Confidence</span>. Recommended action aligns with safety protocols.
+                                        Detected <span className="font-mono text-orange-300">Temp_Variance &gt; 0.5</span> combined with rising <span className="font-mono text-cyan-300">Vibration_Trend</span>. The model predicts a thermal runaway with <span className="font-bold text-white">92% Confidence</span>. Recommended action aligns with safety protocols.
                                     </div>
                                 </div>
->>>>>>> 8aad6e525e887c2c638847a05ec8a3fec4419c31
                             </div>
                         </div>
 
